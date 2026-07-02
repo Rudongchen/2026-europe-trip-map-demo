@@ -1,0 +1,1919 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2026北欧-法国建筑旅行地图</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    html, body { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    #map { height: 100%; width: 100%; }
+    /* Mobile route selection guard */
+    #map, .leaflet-container, .leaflet-pane, .leaflet-interactive {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .panel {
+      position: absolute; z-index: 1000; left: 16px; top: 16px; max-width: 380px;
+      background: rgba(255,255,255,.95); border: 1px solid #ddd; border-radius: 8px;
+      padding: 10px 12px; box-shadow: 0 4px 18px rgba(0,0,0,.12); font-size: 13px; line-height: 1.45;
+      max-height: min(72vh, 620px);
+    }
+    .panel-header { display: flex; align-items: center; gap: 8px; }
+    .panel h1 { font-size: 15px; margin: 0; flex: 1; }
+    .panel-toggle {
+      border: 1px solid #cfd8e3; border-radius: 6px; background: #f7f9fb; padding: 2px 7px;
+      font: inherit; cursor: pointer; color: #243b53;
+    }
+    .panel-body { margin-top: 8px; max-height: calc(min(72vh, 620px) - 48px); overflow: auto; padding-right: 4px; }
+    .panel.collapsed { max-width: 280px; }
+    .panel.collapsed .panel-body { display: none; }
+    .legend { display: grid; gap: 4px; }
+    .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+    .must { background: #c9362b; }
+    .strong { background: #226ab3; }
+    .maybe { background: #5f8f3b; }
+    .far { background: #7b61c9; }
+    .closed { background: #777; }
+    .route { background: #db8a16; }
+    .area { background: #1f9a91; }
+    .official-stop { background: #f0a329; }
+    .shop { background: #111827; }
+    .supply-grocery { background: #2f855a; }
+    .supply-fuel { background: #b7791f; }
+    .transport-air { background: #3457d5; }
+    .transport-rail { background: #8b2bb3; }
+    .transport-ground { background: #475569; }
+    .transport-rental { background: #0f766e; }
+    .leaflet-popup-content { min-width: 270px; max-width: 360px; }
+    .tag { display: inline-block; padding: 2px 6px; border-radius: 999px; background: #f0f0f0; font-size: 11px; margin: 0 4px 6px 0; }
+    .popup-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+    .meta { margin: 6px 0; padding-left: 16px; }
+    .meta li { margin: 2px 0; }
+    .small { color: #666; font-size: 12px; }
+    .status {
+      margin-top: 8px; padding-top: 8px; border-top: 1px solid #e6e6e6; color: #555; font-size: 12px;
+    }
+    .links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .links a {
+      display: inline-block; padding: 4px 8px; border: 1px solid #cfd8e3; border-radius: 6px;
+      background: #f7f9fb; text-decoration: none;
+    }
+    .photo-box {
+      position: relative; height: 190px; margin: 8px 0; border-radius: 8px; overflow: hidden;
+      background: linear-gradient(135deg, #222831, #11161c); display: flex; align-items: center; justify-content: center;
+    }
+    .photo-box img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .photo-box .loading, .photo-box .empty { color: #667; font-size: 12px; padding: 12px; text-align: center; }
+    .photo-btn {
+      position: absolute; top: 50%; transform: translateY(-50%); border: 0; width: 28px; height: 36px;
+      background: rgba(0,0,0,.45); color: white; cursor: pointer; font-size: 18px;
+    }
+    .photo-btn.prev { left: 0; }
+    .photo-btn.next { right: 0; }
+    .photo-count {
+      position: absolute; right: 6px; bottom: 6px; padding: 2px 6px; border-radius: 999px;
+      background: rgba(0,0,0,.55); color: white; font-size: 11px;
+    }
+    .sun-tooltip {
+      background: rgba(255, 248, 220, .96);
+      border: 1px solid #e1b84c;
+      color: #4b3a08;
+      font-size: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.12);
+    }
+    .selection-panel {
+      position: absolute; z-index: 1000; right: 16px; bottom: 18px; width: min(360px, calc(100vw - 32px));
+      background: rgba(255,255,255,.96); border: 1px solid #d9d9d9; border-radius: 8px;
+      padding: 10px 12px; box-shadow: 0 4px 18px rgba(0,0,0,.14); font-size: 12px; line-height: 1.45;
+    }
+    .selection-panel h2 { font-size: 13px; margin: 0 0 6px; }
+    .selection-panel button {
+      border: 1px solid #cfd8e3; border-radius: 6px; background: #f7f9fb; padding: 3px 8px;
+      font: inherit; cursor: pointer; margin-top: 6px;
+    }
+    .segment-label {
+      background: rgba(255,255,255,.92); border: 1px solid rgba(0,0,0,.22); color: #111827;
+      border-radius: 999px; font-weight: 700; padding: 1px 6px; box-shadow: 0 1px 6px rgba(0,0,0,.14);
+    }
+    .lodging-icon {
+      position: relative; width: 28px; height: 28px; border-radius: 8px; background: #1f4f82;
+      border: 2px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,.28); display: grid; place-items: center;
+    }
+    .lodging-icon svg { width: 19px; height: 19px; stroke: #fff; stroke-width: 2.35; fill: none; }
+    .nights-badge {
+      position: absolute; right: -8px; top: -8px; min-width: 17px; height: 17px; padding: 0 4px;
+      border-radius: 999px; background: #f5c542; color: #111827; border: 2px solid #fff;
+      font-size: 10px; line-height: 17px; font-weight: 800; text-align: center;
+    }
+    .supply-icon {
+      width: 24px; height: 24px; border-radius: 999px; border: 2px solid #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,.24); display: grid; place-items: center;
+      color: #fff; font-size: 14px; font-weight: 800;
+    }
+    .supply-icon.grocery { background: #2f855a; }
+    .supply-icon.fuel { background: #b7791f; }
+    .supply-icon svg { width: 15px; height: 15px; stroke: #fff; stroke-width: 2.3; fill: none; }
+    .transport-icon {
+      width: 30px; height: 30px; border-radius: 999px; border: 2px solid #fff;
+      box-shadow: 0 2px 10px rgba(0,0,0,.28); display: grid; place-items: center;
+      color: #fff; font-size: 16px; font-weight: 800;
+    }
+    .transport-icon.airport { background: #3457d5; }
+    .transport-icon.station { background: #8b2bb3; }
+    .transport-icon.terminal { background: #475569; }
+    .transport-icon svg { width: 17px; height: 17px; stroke: #fff; stroke-width: 2.3; fill: none; }
+    .transport-label {
+      background: rgba(255,255,255,.94); border: 1px solid rgba(0,0,0,.20); color: #243b53;
+      border-radius: 999px; font-weight: 800; padding: 1px 6px; box-shadow: 0 1px 6px rgba(0,0,0,.13);
+      font-size: 11px;
+    }
+    .route-badge {
+      width: 28px; height: 28px; border-radius: 8px; border: 2px solid #fff;
+      display: grid; place-items: center; color: white; box-shadow: 0 2px 10px rgba(0,0,0,.28);
+      font-size: 13px;
+    }
+    .route-badge.flight { background: #3457d5; }
+    .route-badge.rail { background: #64358d; }
+    .route-badge.ground { background: #475569; }
+    .route-badge.rental { background: #0f766e; }
+    .route-badge svg { width: 18px; height: 18px; stroke: #fff; stroke-width: 2.25; fill: none; }
+    a { color: #1465c0; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="panel collapsed" id="legendPanel">
+    <div class="panel-header">
+      <h1>2026北欧-法国建筑旅行地图</h1>
+      <button class="panel-toggle" id="legendToggle" type="button">展开</button>
+    </div>
+    <div class="panel-body">
+      <div class="legend">
+        <div><span class="dot must"></span>核心/高度适合你</div>
+        <div><span class="dot strong"></span>很适合，但看时间/体力</div>
+        <div><span class="dot maybe"></span>备选或顺路</div>
+        <div><span class="dot far"></span>远，除非专门安排</div>
+        <div><span class="dot closed"></span>关闭或仅看外观</div>
+        <div><span class="dot route"></span>建议路线/时段</div>
+        <div><span class="dot area"></span>适合停留区域</div>
+        <div><span class="dot official-stop"></span>国家观光公路官方停靠点</div>
+        <div><span class="dot shop"></span>iPad / 电子产品购买备选店</div>
+        <div><span class="dot" style="background:#1f4f82"></span>住宿落脚点，黄色数字=晚数</div>
+        <div><span class="dot supply-grocery"></span>沿途食材采购候选</div>
+        <div><span class="dot supply-fuel"></span>沿途加油候选</div>
+        <div><span class="dot transport-air"></span>航班/机场，弧线=飞行航段</div>
+        <div><span class="dot transport-rail"></span>火车/火车站</div>
+        <div><span class="dot transport-ground"></span>非自驾短驳/市内交通</div>
+        <div><span class="dot transport-rental"></span>租车自驾起止/路段提示</div>
+        <div><span class="dot" style="background:#b8b8b8"></span>未纳入本次的观光路线</div>
+      </div>
+      <p class="small">弹窗内时间、票价、耗时用于决策。出发前请以官网、天气、道路状态和 Google Maps 当日信息复核。</p>
+      <div id="routingStatus" class="status">道路路线：正在尝试按真实道路生成...</div>
+    </div>
+  </div>
+  <div id="routeSelectionPanel" class="selection-panel">
+    <h2>自驾分段选择</h2>
+    <div id="routeSelectionSummary">手机上点“选择路段”后，再轻点彩色自驾小段或租车图标；电脑上也可长按路线进入连续多选。</div>
+    <button id="toggleRouteSelection" type="button">选择路段</button>
+    <button id="clearRouteSelection" type="button">清除选择</button>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([58.5, 7.5], 5);
+    const baseMaps = {
+      'Carto 浅色底图': L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 20,
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+        subdomains: 'abcd'
+      }),
+      'OpenStreetMap 标准': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }),
+      'Esri 地形底图': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: 'Tiles &copy; Esri'
+      })
+    };
+    const defaultBaseLayer = baseMaps['Carto 浅色底图'].addTo(map);
+    L.control.layers(baseMaps, null, { position: 'bottomright', collapsed: true }).addTo(map);
+    let baseLayerFailedOver = false;
+    defaultBaseLayer.on('tileerror', () => {
+      if (baseLayerFailedOver) return;
+      baseLayerFailedOver = true;
+      map.removeLayer(defaultBaseLayer);
+      baseMaps['Esri 地形底图'].addTo(map);
+    });
+
+    const colors = {
+      must: '#c9362b',
+      strong: '#226ab3',
+      maybe: '#6e9f3d',
+      far: '#7b61c9',
+      closed: '#777',
+      route: '#db8a16',
+      area: '#1f9a91'
+    };
+    colors.shop = '#111827';
+
+    const officialStopColor = '#f0a329';
+    const norwayLine = '#007c89';
+    const franceLine = '#a44cc4';
+    const lofotenLine = '#2b7bdf';
+    const grayRoute = '#b8b8b8';
+    const transportColors = {
+      flight: '#3457d5',
+      rail: '#8b2bb3',
+      ground: '#475569',
+      rental: '#0f766e'
+    };
+
+    const transportHubs = [
+      {
+        id:'WUH',
+        name:'Wuhan Tianhe International Airport｜武汉天河国际机场',
+        kind:'airport',
+        code:'WUH',
+        lat:30.7838,
+        lng:114.2081,
+        terminal:'T3（国航国内线常用；以携程/国航值机为准）',
+        role:'8/9 出发、8/25 抵达',
+        official:'https://www.whairport.com/',
+        maps:'https://www.google.com/maps/search/?api=1&query=Wuhan%20Tianhe%20International%20Airport',
+        note:'国内段起终点。8/9 先飞北京衔接国际段；8/25 北京回武汉。'
+      },
+      {
+        id:'PEK',
+        name:'Beijing Capital International Airport｜北京首都国际机场',
+        kind:'airport',
+        code:'PEK',
+        lat:40.0799,
+        lng:116.6031,
+        terminal:'CA国内段多为T3；AF国际段航站楼需值机前复核',
+        role:'8/9 国内转国际；8/25 国际转国内',
+        official:'https://www.bcia.com.cn/',
+        maps:'https://www.google.com/maps/search/?api=1&query=Beijing%20Capital%20International%20Airport',
+        note:'8/9 18:35抵达，22:40飞巴黎，转机约5小时05分。若涉及T3/T2跨楼，时间仍较从容，但托运行李和出境流程要留余量。'
+      },
+      {
+        id:'CDG',
+        name:'Paris Charles de Gaulle Airport｜巴黎戴高乐机场',
+        kind:'airport',
+        code:'CDG',
+        lat:49.0097,
+        lng:2.5479,
+        terminal:'8/10到达预计T2E；8/10去Bergen为T2F；8/18 Norwegian到达T2D；8/24回北京预计T2E，均需出发前复核',
+        role:'申根入境、法国/挪威衔接、返程',
+        official:'https://www.parisaeroport.fr/en/passengers',
+        maps:'https://www.google.com/maps/search/?api=1&query=Paris%20Charles%20de%20Gaulle%20Airport',
+        note:'8/10北京抵达06:20，09:45飞Bergen，账面转机3小时15分。若行李不直挂，需要入境申根、取行李、再到2F托运安检。'
+      },
+      {
+        id:'BGO',
+        name:'Bergen Airport Flesland｜卑尔根弗莱斯兰机场',
+        kind:'airport',
+        code:'BGO',
+        lat:60.2934,
+        lng:5.2181,
+        terminal:'单一主航站楼；取车点在机场租车区域',
+        role:'8/10 抵达挪威并取车',
+        official:'https://avinor.no/en/airport/bergen-airport/',
+        maps:'https://www.google.com/maps/search/?api=1&query=Bergen%20Airport%20Flesland',
+        note:'12:00抵达，预留入境/行李/取车后，地图按14:30开始自驾估算。'
+      },
+      {
+        id:'TRD',
+        name:'Trondheim Airport Værnes｜特隆赫姆瓦尔内斯机场',
+        kind:'airport',
+        code:'TRD',
+        lat:63.4578,
+        lng:10.9239,
+        terminal:'单一主航站楼；机场内还车/酒店步行衔接',
+        role:'8/12 还车住宿；8/13 飞Leknes',
+        official:'https://avinor.no/en/airport/trondheim-airport/',
+        maps:'https://www.google.com/maps/search/?api=1&query=Trondheim%20Airport%20Vaernes',
+        note:'8/12晚还车并住机场；8/13 09:45 WF7303飞Bodø。'
+      },
+      {
+        id:'BOO',
+        name:'Bodø Airport｜博德机场',
+        kind:'airport',
+        code:'BOO',
+        lat:67.2692,
+        lng:14.3653,
+        terminal:'小型机场，单一航站楼逻辑',
+        role:'8/13与8/17中转',
+        official:'https://avinor.no/en/airport/bodo-airport/',
+        maps:'https://www.google.com/maps/search/?api=1&query=Bodo%20Airport',
+        note:'8/13中转40分钟；8/17中转30分钟。两段都是紧凑连接，务必关注行李是否同一票/同航司处理。'
+      },
+      {
+        id:'LKN',
+        name:'Leknes Airport｜莱克内斯机场',
+        kind:'airport',
+        code:'LKN',
+        lat:68.1525,
+        lng:13.6094,
+        terminal:'小型机场，单一航站楼逻辑',
+        role:'8/13抵达取车；8/17还车离岛',
+        official:'https://avinor.no/en/airport/leknes-airport/',
+        maps:'https://www.google.com/maps/search/?api=1&query=Leknes%20Airport',
+        note:'8/13 12:00抵达，和岛上租车13:05取车衔接舒服；8/17 19:05离开，需提前还车。'
+      },
+      {
+        id:'OSL',
+        name:'Oslo Airport Gardermoen｜奥斯陆加勒穆恩机场',
+        kind:'airport',
+        code:'OSL',
+        lat:60.1939,
+        lng:11.1004,
+        terminal:'单一主航站楼',
+        role:'8/17抵达住宿；8/18飞巴黎',
+        official:'https://avinor.no/en/airport/oslo-airport/',
+        maps:'https://www.google.com/maps/search/?api=1&query=Oslo%20Airport%20Gardermoen',
+        note:'8/17 21:40到达后住机场；8/18 09:50 Norwegian飞CDG。'
+      },
+      {
+        id:'GDL',
+        name:'Paris Gare de Lyon｜巴黎里昂火车站',
+        kind:'station',
+        code:'Paris GDL',
+        lat:48.8443,
+        lng:2.3730,
+        terminal:'SNCF主站；TGV站台以当天车票和大屏为准',
+        role:'8/20 巴黎出发去里昂机场TGV站',
+        official:'https://www.garesetconnexions.sncf/en/stations-services/paris-gare-lyon',
+        maps:'https://www.google.com/maps/search/?api=1&query=Paris%20Gare%20de%20Lyon',
+        note:'按规划中的9:42左右车次设为地图锚点；建议8:55-9:05前后从酒店打车出发。'
+      },
+      {
+        id:'LYS-TGV',
+        name:'Lyon Saint-Exupéry TGV｜里昂圣埃克絮佩里TGV站',
+        kind:'station',
+        code:'LYS TGV',
+        lat:45.7208,
+        lng:5.0756,
+        terminal:'机场TGV站，与LYS机场相连；租车点按柜台指引',
+        role:'8/20抵达，看Calatrava并取车',
+        official:'https://www.garesetconnexions.sncf/en/stations-services/lyon-saint-exupery-tgv',
+        maps:'https://www.google.com/maps/search/?api=1&query=Lyon%20Saint-Exupery%20TGV',
+        note:'约12:15抵达；先看Calatrava车站空间，再取车，地图按13:25开始法国自驾。'
+      }
+    ];
+
+    const transportConnections = [
+      {type:'flight', code:'CA8721', name:'WUH → PEK', from:'WUH', to:'PEK', depart:'2026-08-09 16:05', arrive:'2026-08-09 18:35', terminal:'WUH T3 → PEK T3（待值机确认）', luggage:'以航司规则为准', layover:'北京转国际约5小时05分', note:'国内先到北京，再转Air France长途。'},
+      {type:'flight', code:'AF9021', name:'PEK → CDG', from:'PEK', to:'CDG', depart:'2026-08-09 22:40', arrive:'2026-08-10 06:20', terminal:'PEK AF值机航站楼待复核 → CDG预计T2E', luggage:'2件托运行李，每件23kg', layover:'巴黎衔接Bergen约3小时15分', note:'关键风险是巴黎入境/取行李/再托运；若Air France能直挂到BGO会舒服很多。'},
+      {type:'flight', code:'AF9352', name:'CDG → BGO', from:'CDG', to:'BGO', depart:'2026-08-10 09:45', arrive:'2026-08-10 12:00', terminal:'CDG T2F → BGO主航站楼', luggage:'1件托运行李23kg', layover:'抵达BGO后预留约3小时10分到14:30自驾启动', note:'这是挪威自驾方案的入口航班。'},
+      {type:'rental', code:'Rental 1', name:'BGO取车 → TRD还车', from:'BGO', to:'TRD', depart:'2026-08-10 13:05取车', arrive:'2026-08-12 20:55前还车', terminal:'BGO机场租车区 → TRD机场租车区', luggage:'车内整理行李；还车前处理油量/票据', layover:'8/12晚机场住宿，8/13早飞Lofoten', note:'地图中的挪威D1-D3彩色自驾分段都属于这一段租车。'},
+      {type:'flight', code:'WF7303', name:'TRD → BOO', from:'TRD', to:'BOO', depart:'2026-08-13 09:45', arrive:'2026-08-13 10:55', terminal:'TRD主航站楼 → BOO主航站楼', luggage:'托运23kg + 手提8kg + 随身小包', layover:'Bodø转机40分钟', note:'Widerøe第一段。'},
+      {type:'flight', code:'WF7804', name:'BOO → LKN', from:'BOO', to:'LKN', depart:'2026-08-13 11:35', arrive:'2026-08-13 12:00', terminal:'BOO主航站楼 → LKN小型航站楼', luggage:'同一票务行李衔接', layover:'抵达后到13:05取车约1小时05分', note:'抵达Leknes后进入岛上租车阶段。'},
+      {type:'rental', code:'Rental 2', name:'LKN取车/还车', from:'LKN', to:'LKN', depart:'2026-08-13 13:05取车', arrive:'2026-08-17 18:05左右还车', terminal:'Leknes机场租车点', luggage:'岛上行李随车机动', layover:'还车后衔接19:05离岛航班', note:'Lofoten中部基地与海滩机动都属于这一段租车。'},
+      {type:'flight', code:'WF7815', name:'LKN → BOO', from:'LKN', to:'BOO', depart:'2026-08-17 19:05', arrive:'2026-08-17 19:40', terminal:'LKN小型航站楼 → BOO主航站楼', luggage:'托运23kg + 手提8kg + 随身小包', layover:'Bodø转机30分钟', note:'这段衔接很紧，务必确认行李/登机牌和中转规则。'},
+      {type:'flight', code:'DY9355', name:'BOO → OSL', from:'BOO', to:'OSL', depart:'2026-08-17 20:10', arrive:'2026-08-17 21:40', terminal:'BOO主航站楼 → OSL主航站楼', luggage:'同一票务行李衔接；以航司联运规则为准', layover:'抵达后机场住宿', note:'回到奥斯陆机场过渡一晚。'},
+      {type:'flight', code:'DY9490', name:'OSL → CDG', from:'OSL', to:'CDG', depart:'2026-08-18 09:50', arrive:'2026-08-18 12:15', terminal:'OSL主航站楼 → CDG T2D', luggage:'2件托运 + 手提 + 随身小包', layover:'抵达巴黎后去酒店/市区', note:'巴黎段正式开始。'},
+      {type:'ground', code:'Taxi/RER', name:'CDG → Opéra District Hotel', from:'CDG', toCoord:[48.8716,2.3370], toName:'Opéra District Hotel', depart:'2026-08-18 中午', arrive:'视交通约45-75分钟', terminal:'CDG T2D到市区', luggage:'带大件行李，优先出租车/网约车或RER+步行谨慎选择', layover:'酒店寄存/入住后开始巴黎活动', note:'非自驾短驳，地图用灰线和交通标识区分。'},
+      {type:'ground', code:'Taxi', name:'Opéra District Hotel → Paris Gare de Lyon', fromCoord:[48.8716,2.3370], fromName:'Opéra District Hotel', to:'GDL', depart:'2026-08-20 约09:25-09:35', arrive:'约09:55-10:05', terminal:'市区道路到巴黎里昂站', luggage:'带行李，建议打车', layover:'预留10-20分钟找站台', note:'按10:20左右火车倒推；早高峰请保守。'},
+      {type:'rail', code:'TGV', name:'Paris Gare de Lyon → Lyon Saint-Exupéry TGV', from:'GDL', to:'LYS-TGV', depart:'2026-08-20 约10:20', arrive:'2026-08-20 约12:15', terminal:'SNCF站台以车票/大屏为准', luggage:'随身携带，上下车自己处理', layover:'抵达后看Calatrava约40-45分钟 + 取车约30分钟', note:'这是法国段从巴黎切到建筑自驾线的关键火车。'},
+      {type:'rental', code:'Rental 3', name:'LYS TGV取车 → CDG还车', from:'LYS-TGV', to:'CDG', depart:'2026-08-20 约13:25取车后出发', arrive:'2026-08-24 下午还车', terminal:'Lyon机场/TGV租车点 → CDG租车还车区', luggage:'法国自驾全程随车；返程日还车后退税/值机', layover:'8/24 22:15回北京', note:'地图中的法国彩色自驾分段#24-#31都属于这一段租车。'},
+      {type:'flight', code:'AF9022', name:'CDG → PEK', from:'CDG', to:'PEK', depart:'2026-08-24 22:15', arrive:'2026-08-25 16:35', terminal:'CDG预计T2E → PEK航站楼待复核', luggage:'2件托运行李，每件23kg', layover:'北京转武汉约1小时50分', note:'返程日白天可安排Villa Savoye/购物/还车，但退税和长途值机要留足余量。'},
+      {type:'flight', code:'CA8722', name:'PEK → WUH', from:'PEK', to:'WUH', depart:'2026-08-25 18:25', arrive:'2026-08-25 20:40', terminal:'PEK CA国内航站楼待复核 → WUH T3', luggage:'以航司规则为准', layover:'旅行结束', note:'北京入境、取行李、国内段再托运/安检需要关注实际流程。'}
+    ];
+
+    const places = [
+      {name:'Opéra District Hotel｜巴黎歌剧院区酒店', lat:48.8716, lng:2.3370, type:'maybe', fit:'住宿基点', world:'-', decision:'行李寄存/出发点', hours:'按酒店入住退房；8/19可尝试寄存行李。', price:'已订住宿。', pass:'无', best:'8/18抵达后休整；8/19退房寄存后出门。', note:'靠近 Grands Boulevards / Opéra，去卢浮宫、老佛爷、塞纳河都方便。'},
+      {name:'Louvre Pyramid / Cour Napoléon｜卢浮宫金字塔 / 拿破仑庭院', lat:48.8606, lng:2.3376, type:'must', fit:'5/5', world:'5/5', decision:'必去，已预留8/19早场', hours:'常规约9:00-18:35，周二闭馆；部分晚开日需查官网。', price:'成人常规票约22欧；已预留早场时段。', pass:'Paris Museum Pass通常包含馆藏，但仍常需预约时段。', best:'8/19最早入场；重点先看金字塔、地下入口大厅、宫殿动线。', note:'不要把任务设为看完馆藏。你这次重点是贝聿铭如何把现代入口系统嵌入古典宫殿。'},
+      {name:'Bourse de Commerce / Pinault Collection｜商品交易所 / 皮诺收藏馆', lat:48.8629, lng:2.3429, type:'must', fit:'5/5', world:'4/5', decision:'强烈推荐', hours:'常规约11:00-19:40，周五晚开，周二闭馆；以当期展览为准。', price:'常规票约14-18欧区间，需查当期。', pass:'通常不含Paris Museum Pass。', best:'8/18下午或8/19卢浮宫后；看Tadao Ando圆筒介入历史建筑。', note:'它和卢浮宫非常近，是“建筑+现代/当代艺术”双重匹配点。'},
+      {name:'Musée des Arts Décoratifs｜装饰艺术博物馆', lat:48.8631, lng:2.3334, type:'strong', fit:'4/5', world:'4/5', decision:'卢浮宫旁强备选', hours:'常规约11:00-18:35，周一闭馆，部分展览晚开。', price:'常设/临展票价随展览变化，常见约14-15欧起。', pass:'通票关系需按展览复核，不要默认全含。', best:'适合8/19从卢浮宫出来后，看设计、工艺、装饰艺术精品。', note:'你喜欢工艺精湛、富丽堂皇和视觉文化，这里比很多普通博物馆更贴合。'},
+      {name:"Musée de l'Orangerie｜橘园美术馆", lat:48.8638, lng:2.3226, type:'strong', fit:'5/5', world:'4/5', decision:'强烈推荐，小而精', hours:'常规约9:00-18:35，周二闭馆。', price:'常规票约12.5欧；联票/预约需查官网。', pass:'Paris Museum Pass通常包含。', best:'8/19卢浮宫后，作为莫奈睡莲空间体验；比奥赛更轻。', note:'不是大而全，而是一个非常成熟的“绘画+空间”体验。'},
+      {name:"Musée d'Orsay｜奥赛博物馆", lat:48.8600, lng:2.3266, type:'strong', fit:'5/5', world:'5/5', decision:'世界级，但耗时', hours:'常规约9:30-18:35，周四晚开，周一闭馆。', price:'常规票约16欧上下，需查官网。', pass:'Paris Museum Pass通常包含。', best:'如果8/19卢浮宫后还有精神，可去；否则留给下次完整半天。', note:'印象派/后印象派世界级，旧火车站空间本身也值得看。'},
+      {name:'Sainte-Chapelle｜圣礼拜堂', lat:48.8554, lng:2.3450, type:'strong', fit:'4/5', world:'5/5', decision:'世界级短时高密度点', hours:'常规约9:00-19:40夏季，需查具体日期。', price:'常规票约13欧上下。', pass:'Paris Museum Pass通常包含，但仍建议预约时段。', best:'晴天上午或下午有光时；看彩窗和哥特空间。', note:'不是现代建筑，但艺术密度极高，短时间回报很大。'},
+      {name:'Musée d’Art Moderne de Paris｜巴黎现代艺术博物馆', lat:48.8641, lng:2.2979, type:'must', fit:'5/5', world:'4/5', decision:'非常适合你', hours:'常规约10:00-18:35，周一闭馆；临展可能晚开。', price:'常设展通常免费，临展收费。', pass:'常设免费；临展另计。', best:'若你想看20世纪现代艺术，这里比许多传统馆更贴合。', note:'适合你提到的毕加索、马蒂斯、现代艺术兴趣。和 Palais de Tokyo / Eiffel区域可组合。'},
+      {name:'Fondation Louis Vuitton｜路易威登基金会', lat:48.8766, lng:2.2630, type:'must', fit:'5/5', world:'5/5', decision:'很值得考虑，但偏西', hours:'随展览变化，常规白天开放，周二通常闭馆；需查官网。', price:'常规票常见约16欧起，特展可能更高。', pass:'通常不含Paris Museum Pass。', best:'如果8/18下午精力好，或8/19下午放弃市中心多点，专门去看Frank Gehry建筑和展览。', note:'ChatGPT这点我赞同：它可能比传统历史馆更吸引你。缺点是偏西，交通时间要算。'},
+      {name:'Centre Pompidou｜蓬皮杜艺术中心', lat:48.8606, lng:2.3522, type:'closed', fit:'5/5', world:'5/5', decision:'2026仅看外观', hours:'2026年处于长期翻修关闭阶段。', price:'无展览可看。', pass:'无', best:'路过玛黑/Les Halles时看外观和广场即可。', note:'如果开放会很适合你，但这次不要把它当展览点。'},
+      {name:'Musée Picasso Paris｜巴黎毕加索博物馆', lat:48.8599, lng:2.3623, type:'strong', fit:'4/5', world:'4/5', decision:'推荐，但不压过卢浮宫/现代艺术馆', hours:'常规约10:30-18:35，周一闭馆；周末时段需查。', price:'常规票约16欧上下。', pass:'Paris Museum Pass通常包含。', best:'8/19下午如果你选择玛黑区路线，顺路进入。', note:'如果你想聚焦Picasso，它比泛泛逛玛黑更有内容。'},
+      {name:'Atelier des Lumières｜光之工坊', lat:48.8610, lng:2.3808, type:'maybe', fit:'3/5', world:'3/5', decision:'轻松备选', hours:'随展览和时段变化，常有白天/晚间场。', price:'常规票价随展览，约15-18欧区间。', pass:'通常不含通票。', best:'晚上或累了时作为轻娱乐，不作为核心艺术判断。', note:'好看但偏沉浸式娱乐，艺术和建筑深度不如核心馆。'},
+      {name:'Institut du Monde Arabe｜阿拉伯世界研究院', lat:48.8490, lng:2.3565, type:'strong', fit:'4/5', world:'4/5', decision:'建筑向推荐', hours:'博物馆常规约10:00-18:35，周一闭馆；观景/活动另查。', price:'展览收费；外观可免费。', pass:'通常不作为通票核心项。', best:'看Jean Nouvel机械遮阳立面，适合建筑观察而非长时间逛展。', note:'可和塞纳河左岸/圣日耳曼路线连接。'},
+      {name:'Panthéon｜先贤祠', lat:48.8462, lng:2.3464, type:'maybe', fit:'3/5', world:'4/5', decision:'有空再去', hours:'常规约10:00-18:35/19:05，季节变化。', price:'常规票约13欧上下。', pass:'Paris Museum Pass通常包含。', best:'如果走左岸/圣日耳曼且想看庄严纪念空间，可短看。', note:'世界地位和空间感都不错，但不如现代建筑/现代艺术贴你。'},
+      {name:'Musée Rodin｜罗丹博物馆', lat:48.8554, lng:2.3158, type:'maybe', fit:'4/5', world:'4/5', decision:'舒服但非核心', hours:'常规约10:00-19:05，周一闭馆。', price:'常规票约15欧上下。', pass:'Paris Museum Pass通常包含。', best:'天气好时花园+雕塑很舒服；适合8/18轻松版。', note:'艺术价值高，也有很好的花园体验，但这次可让位给更贴合主线的点。'},
+      {name:'Maison La Roche / Fondation Le Corbusier｜拉罗什住宅 / 柯布西耶基金会', lat:48.8510, lng:2.2650, type:'must', fit:'5/5', world:'4/5', decision:'柯布西耶主线必看候选', hours:'常见开放为工作日下午及周六，周日闭馆；必须出发前复核。', price:'常规票约10欧上下。', pass:'通常不含Paris Museum Pass。', best:'如果8/19下午能对上开放时间，优先级很高。', note:'巴黎最贴合你后续La Tourette/Firminy/Ronchamp/Villa Savoye的建筑前奏。'},
+      {name:'Palais de Tokyo｜东京宫', lat:48.8648, lng:2.2973, type:'maybe', fit:'4/5', world:'4/5', decision:'展览好才去', hours:'当代艺术馆常有午后至晚间开放，周二通常闭馆；需查当期。', price:'展览票价随展览。', pass:'通常不含通票。', best:'和巴黎现代艺术博物馆同区，可作为当代艺术补充。', note:'展览质量看档期，不如MAM常设稳定。'},
+      {name:'Sacré-Cœur / Montmartre｜圣心大教堂 / 蒙马特', lat:48.8867, lng:2.3431, type:'maybe', fit:'4/5', world:'4/5', decision:'8/19清晨短去可行', hours:'教堂通常清晨至晚开放，登顶另查。', price:'教堂免费；穹顶/特殊区域收费。', pass:'不依赖通票。', best:'8/19清晨，避开人潮，看城市视野和白色教堂体量。', note:'你愿意早起的话很好；不要白天人多时耗太久。'},
+      {name:'Galeries Lafayette Coupole｜老佛爷百货穹顶', lat:48.8738, lng:2.3321, type:'maybe', fit:'4/5', world:'3/5', decision:'顺路看穹顶/屋顶', hours:'商场常规约10:00-20:40，周日略短；以官网为准。', price:'逛穹顶/屋顶通常免费，购物另计。', pass:'无', best:'8/18下午或晚上，离歌剧院片区酒店很近；看穹顶和屋顶城市景。', note:'不是博物馆，但和你的“城市场景/空间体验”很匹配。'},
+      {name:'Palace of Versailles｜凡尔赛宫', lat:48.8049, lng:2.1204, type:'far', fit:'3/5', world:'5/5', decision:'留给完整一天', hours:'宫殿常规周一闭馆，花园开放规则复杂。', price:'票种多，宫殿/花园/音乐喷泉不同；需预约。', pass:'Paris Museum Pass通常含宫殿，但花园音乐喷泉等可能另计。', best:'这次不建议塞；以后完整一天去。', note:'世界级，但会吞掉你的巴黎现代艺术和建筑时间。'},
+      {name:'Villa Savoye｜萨伏伊别墅', lat:48.9244, lng:2.0283, type:'must', fit:'5/5', world:'5/5', decision:'8/23-24收束点', hours:'由法国国家古迹中心运营，周一常闭；具体开放需查。', price:'常规票约8欧上下。', pass:'Paris Museum Pass通常包含CMN古迹，但仍需复核预约。', best:'8/23下午或8/24上午；不是8/19市内巴黎日。', note:'这应成为法国建筑线收束，而非巴黎市内备选。'}
+    ];
+
+    const officialLinks = {
+      'Louvre Pyramid / Cour Napoléon': 'https://www.louvre.fr/en',
+      'Bourse de Commerce / Pinault Collection': 'https://www.pinaultcollection.com/en/boursedecommerce',
+      'Musée des Arts Décoratifs': 'https://madparis.fr/',
+      "Musée de l'Orangerie": 'https://www.musee-orangerie.fr/en',
+      "Musée d'Orsay": 'https://www.musee-orsay.fr/en',
+      'Sainte-Chapelle': 'https://www.sainte-chapelle.fr/en',
+      'Musée d’Art Moderne de Paris': 'https://www.mam.paris.fr/en',
+      'Fondation Louis Vuitton': 'https://www.fondationlouisvuitton.fr/en',
+      'Centre Pompidou': 'https://www.centrepompidou.fr/en/',
+      'Musée Picasso Paris': 'https://www.museepicassoparis.fr/en',
+      'Atelier des Lumières': 'https://www.atelier-lumieres.com/en',
+      'Institut du Monde Arabe': 'https://www.imarabe.org/en',
+      'Panthéon': 'https://www.paris-pantheon.fr/en',
+      'Musée Rodin': 'https://www.musee-rodin.fr/en',
+      'Maison La Roche / Fondation Le Corbusier': 'https://www.fondationlecorbusier.fr/en/work-architecture/achievements-maison-la-roche-paris-16e-1923/',
+      'Palais de Tokyo': 'https://palaisdetokyo.com/en/',
+      'Sacré-Cœur / Montmartre': 'https://www.sacre-coeur-montmartre.com/english/',
+      'Galeries Lafayette Coupole': 'https://haussmann.galerieslafayette.com/en/',
+      'Palace of Versailles': 'https://en.chateauversailles.fr/',
+      'Villa Savoye': 'https://www.villa-savoye.fr/en/'
+    };
+
+    const wikiTitles = {
+      'Opéra District Hotel': 'Boulevard_des_Italiens',
+      'Louvre Pyramid / Cour Napoléon': 'Louvre_Pyramid',
+      'Bourse de Commerce / Pinault Collection': 'Bourse_de_Commerce',
+      'Musée des Arts Décoratifs': 'Musée_des_Arts_Décoratifs,_Paris',
+      "Musée de l'Orangerie": "Musée_de_l'Orangerie",
+      "Musée d'Orsay": "Musée_d'Orsay",
+      'Sainte-Chapelle': 'Sainte-Chapelle',
+      'Musée d’Art Moderne de Paris': "Musée_d'Art_Moderne_de_Paris",
+      'Fondation Louis Vuitton': 'Fondation_Louis_Vuitton',
+      'Centre Pompidou': 'Centre_Pompidou',
+      'Musée Picasso Paris': 'Musée_Picasso',
+      'Atelier des Lumières': 'Atelier_des_Lumières',
+      'Institut du Monde Arabe': 'Institut_du_Monde_Arabe',
+      'Panthéon': 'Panthéon',
+      'Musée Rodin': 'Musée_Rodin',
+      'Maison La Roche / Fondation Le Corbusier': 'Maison_La_Roche',
+      'Palais de Tokyo': 'Palais_de_Tokyo',
+      'Sacré-Cœur / Montmartre': 'Sacré-Cœur,_Paris',
+      'Galeries Lafayette Coupole': 'Galeries_Lafayette_Haussmann',
+      'Palace of Versailles': 'Palace_of_Versailles',
+      'Villa Savoye': 'Villa_Savoye'
+    };
+
+    const photoSearchQueries = {
+      'Opéra District Hotel': ['Boulevard des Italiens Paris street view daylight', 'Boulevard des Italiens Paris architecture', 'Opéra Garnier Paris exterior'],
+      'Louvre Pyramid / Cour Napoléon': ['Louvre Pyramid Cour Napoléon exterior daylight', 'Louvre Pyramid Cour Napoléon night', 'Louvre inverted pyramid interior', 'Louvre Pyramid interior view'],
+      'Bourse de Commerce / Pinault Collection': ['Bourse de Commerce Paris exterior daylight', 'Bourse de Commerce Paris dome exterior', 'Bourse de Commerce Paris interior Tadao Ando', 'Bourse de Commerce Pinault Collection rotunda'],
+      'Musée des Arts Décoratifs': ['Musée des Arts Décoratifs Paris exterior daylight', 'Pavillon de Marsan Louvre façade', 'Musée des Arts Décoratifs Paris interior', 'Musée des Arts Décoratifs Paris collection'],
+      "Musée de l'Orangerie": ['Musée de l’Orangerie Paris exterior daylight', 'Musée de l’Orangerie exterior Tuileries', 'Musée de l’Orangerie Water Lilies room', 'Monet Nymphéas Orangerie Paris'],
+      "Musée d'Orsay": ['Musée d’Orsay exterior Seine daylight', 'Musée d’Orsay Paris façade', 'Musée d’Orsay Paris main hall', 'Musée d’Orsay clock interior'],
+      'Sainte-Chapelle': ['Sainte-Chapelle Paris exterior daylight', 'Sainte-Chapelle exterior palais de justice', 'Sainte-Chapelle stained glass interior Paris', 'Sainte-Chapelle rose window'],
+      'Musée d’Art Moderne de Paris': ['Musée d’Art Moderne de Paris exterior daylight', 'Palais de Tokyo exterior daylight', 'Musée d’Art Moderne de Paris interior', 'Raoul Dufy La Fée Electricité'],
+      'Fondation Louis Vuitton': ['Fondation Louis Vuitton Frank Gehry exterior daylight', 'Fondation Louis Vuitton Paris glass sails exterior', 'Fondation Louis Vuitton exterior night', 'Fondation Louis Vuitton interior'],
+      'Centre Pompidou': ['Centre Pompidou Paris exterior daylight', 'Centre Pompidou Paris exterior pipes', 'Centre Pompidou Paris plaza', 'Pompidou Centre architecture detail'],
+      'Musée Picasso Paris': ['Musée Picasso Paris Hôtel Salé exterior daylight', 'Hôtel Salé Paris courtyard', 'Musée Picasso Paris interior', 'Musée Picasso Paris collection'],
+      'Atelier des Lumières': ['Atelier des Lumières Paris exterior', 'Atelier des Lumières Paris interior hall', 'Atelier des Lumières Paris immersive exhibition', 'Atelier des Lumières projection'],
+      'Institut du Monde Arabe': ['Institut du Monde Arabe Paris exterior daylight', 'Institut du Monde Arabe Jean Nouvel façade', 'Institut du Monde Arabe Paris mashrabiya detail', 'Institut du Monde Arabe interior'],
+      'Panthéon': ['Panthéon Paris exterior daylight', 'Panthéon Paris façade', 'Panthéon Paris interior dome', 'Panthéon Paris nave'],
+      'Musée Rodin': ['Musée Rodin Hôtel Biron Paris exterior daylight', 'Musée Rodin Paris garden exterior', 'Musée Rodin Paris garden Thinker', 'Musée Rodin interior'],
+      'Maison La Roche / Fondation Le Corbusier': ['Maison La Roche Paris Le Corbusier exterior daylight', 'Maison La Roche exterior façade', 'Maison La Roche Le Corbusier interior', 'Maison La Roche ramp'],
+      'Palais de Tokyo': ['Palais de Tokyo Paris exterior daylight', 'Palais de Tokyo façade', 'Palais de Tokyo Paris interior', 'Palais de Tokyo contemporary art'],
+      'Sacré-Cœur / Montmartre': ['Sacré-Cœur Paris exterior daylight', 'Sacré-Cœur Montmartre sunrise', 'Montmartre Paris view Sacré-Cœur', 'Sacré-Cœur interior'],
+      'Galeries Lafayette Coupole': ['Galeries Lafayette Haussmann exterior daylight', 'Galeries Lafayette Paris Coupole', 'Galeries Lafayette rooftop Paris', 'Galeries Lafayette dome interior'],
+      'Palace of Versailles': ['Château de Versailles façade daylight', 'Palace of Versailles exterior gardens', 'Palace of Versailles Hall of Mirrors', 'Versailles gardens palace'],
+      'Villa Savoye': ['Villa Savoye Le Corbusier exterior daylight', 'Villa Savoye exterior façade', 'Villa Savoye pilotis exterior', 'Villa Savoye ramp interior', 'Villa Savoye roof terrace']
+    };
+
+    function baseName(name) {
+      return name.split('｜')[0];
+    }
+
+    const routes = [
+      {
+        name:'8/19 卢浮宫后短线：卢浮宫 → 杜乐丽 → 橘园 → 奥赛外观/塞纳河',
+        type:'route',
+        color:'#db8a16',
+        points:[[48.8606,2.3376],[48.8635,2.3274],[48.8638,2.3226],[48.8600,2.3266]],
+        note:'适合你从卢浮宫出来已经有点累，但还想保留高质量艺术和城市散步。橘园比奥赛轻，塞纳河段可以发呆。'
+      },
+      {
+        name:'8/19 现代艺术/玛黑线：卢浮宫 → Bourse de Commerce → 蓬皮杜外观 → 毕加索/玛黑',
+        type:'route',
+        color:'#b65fcf',
+        points:[[48.8606,2.3376],[48.8629,2.3429],[48.8606,2.3522],[48.8599,2.3623]],
+        note:'适合你想把巴黎变成现代艺术和城市街区体验。蓬皮杜只看外观，毕加索和玛黑可二选一深一点。'
+      },
+      {
+        name:'8/19 清晨线：歌剧院片区酒店 → Montmartre / Sacré-Cœur → Louvre',
+        type:'route',
+        color:'#6b8e23',
+        points:[[48.8716,2.3370],[48.8867,2.3431],[48.8606,2.3376]],
+        note:'只有你能早起才做。清晨短看圣心和城市视野，然后准时去卢浮宫早票。'
+      },
+      {
+        name:'左岸氛围线：塞纳河 → 圣日耳曼 → 咖啡馆 → 拉丁区/先贤祠',
+        type:'route',
+        color:'#1f9a91',
+        points:[[48.8587,2.3376],[48.8543,2.3330],[48.8529,2.3388],[48.8462,2.3464]],
+        note:'不追博物馆数量，追巴黎气质。适合8/18下午或8/19卢浮宫后体力一般时。'
+      },
+      {
+        name:'西侧建筑线：Maison La Roche → Fondation Louis Vuitton → La Défense/去里昂前不建议硬塞',
+        type:'route',
+        color:'#c27c18',
+        points:[[48.8510,2.2650],[48.8766,2.2630],[48.8919,2.2370]],
+        note:'建筑匹配度极高，但地理上偏西。除非你明确放弃市中心多个点，否则不要和卢浮宫同日硬塞满。'
+      }
+    ];
+
+    const areas = [
+      {
+        name:'玛黑区停留区',
+        color:'#1f9a91',
+        bounds:[[48.8548,2.3520],[48.8656,2.3520],[48.8656,2.3670],[48.8548,2.3670]],
+        note:'适合8/19下午：街道、店铺、毕加索博物馆、蓬皮杜外观。重点是街区气质，不是赶点。'
+      },
+      {
+        name:'圣日耳曼/左岸停留区',
+        color:'#358f80',
+        bounds:[[48.8488,2.3220],[48.8582,2.3220],[48.8582,2.3430],[48.8488,2.3430]],
+        note:'适合咖啡、街道、塞纳河、书店和左岸气质。你如果不想再塞博物馆，这里会比硬逛景点更舒服。'
+      },
+      {
+        name:'老佛爷/歌剧院周边短停区',
+        color:'#8f6f35',
+        bounds:[[48.8690,2.3260],[48.8768,2.3260],[48.8768,2.3375],[48.8690,2.3375]],
+        note:'你不想再看歌剧院内部，这里仍可短看老佛爷穹顶和屋顶，离酒店近，适合8/18晚上。'
+      }
+    ];
+
+    const electronicsStores = [
+      {
+        name:'Boulanger Paris Haussmann Maison｜布朗热奥斯曼家居店',
+        lat:48.8736,
+        lng:2.3329,
+        type:'shop',
+        rank:'第一顺位：离歌剧院片区酒店 / 老佛爷 / Opéra 最近，路线最顺',
+        address:'Galeries Lafayette Maison, 35 Boulevard Haussmann, 75009 Paris；取货区通常在 Maison 楼内。',
+        hours:'页面/现场曾显示约 10:00-20:30；出发当天务必点 Google 地图或官网复核。',
+        target:'Tablette Apple IPAD Pro 13 M5 512Go Noir Sidéral（13英寸、M5、512GB、深空黑、Wi‑Fi）',
+        snapshot:'2026-08-01：页面曾看到 €1,719、Produit neuf、Vendu par Boulanger / vendu & expédié par Boulanger，并可选到店自提；公开商品页抓取又出现过 indisponible，说明库存状态会跳，需临近购买再确认。',
+        tax:'退税/PABLO不确定：下单或到店前必须问 “bordereau de détaxe PABLO”。如果线上付款+门店自提不能开退税单，就不要为了退税被它卡住。',
+        strategy:'适合8/18或8/19晚上顺路处理；如果还卡中国手机号/账单地址，建议到店直接买或转 Fnac/Darty。',
+        official:'https://www.boulanger.com/',
+        storeUrl:'https://www.boulanger.com/magasins/ile-de-france/paris/paris/boulanger-paris-haussmann-maison',
+        stockUrl:'https://www.boulanger.com/ref/1231271',
+        searchUrl:'https://www.boulanger.com/resultats?tr=ipad%20pro%2013%20m5%20512go',
+        mapsUrl:'https://www.google.com/maps/search/?api=1&query=Boulanger%20Paris%20Haussmann%20Maison%2035%20Boulevard%20Haussmann%2075009%20Paris'
+      },
+      {
+        name:'Fnac Saint-Lazare / Passage du Havre｜Fnac 圣拉扎尔店',
+        lat:48.8750,
+        lng:2.3278,
+        type:'shop',
+        rank:'第二顺位：交通最稳，离 Saint-Lazare / Opéra 很近，适合从酒店或圣心大教堂回来顺路看',
+        address:'Passage du Havre / Saint-Lazare 一带，靠近 109 Rue Saint-Lazare 与 69 Rue de Caumartin。',
+        hours:'建议按约 10:00-20:40 规划，不要压到 19:40 后；最终以 Google 地图/店铺页当天为准。',
+        target:'iPad Pro 13 pouces M5 512 Go Wi‑Fi，Noir sidéral 或 Argent；也可搜 5G/Cellular 版。',
+        snapshot:'2026-08-01：Fnac 曾显示同款 13英寸 M5 512GB Wi‑Fi 约 €1,719.99；银色更容易有货，黑色可能需要查门店。',
+        tax:'Fnac对游客退税通常比电商自提更容易问清楚；到店第一句话问能否开 PABLO détaxe，再决定买。',
+        strategy:'如果 Boulanger 账号/手机号继续卡住，Fnac 是我更愿意让你现场验证的第二选择。',
+        official:'https://www.fnac.com/',
+        storeUrl:'https://www.fnac.com/localiser-magasin/fnac-paris-saint-lazare/cl292/w-4',
+        stockUrl:'https://www.fnac.com/SearchResult/ResultList.aspx?Search=ipad%20pro%2013%20m5%20512go',
+        searchUrl:'https://www.fnac.com/SearchResult/ResultList.aspx?Search=ipad%20pro%2013%20m5%20512go%20512%20go',
+        mapsUrl:'https://www.google.com/maps/search/?api=1&query=Fnac%20Saint-Lazare%20Passage%20du%20Havre%20Paris'
+      },
+      {
+        name:'Darty Madeleine / Opéra｜Darty 玛德琳-歌剧院备选',
+        lat:48.8706,
+        lng:2.3252,
+        type:'shop',
+        rank:'第三顺位：Fnac同集团体系，适合对比是否同价、是否可退税、是否有现货',
+        address:'Madeleine / Opéra / Saint-Lazare 商圈附近；具体门店以 Darty 官网定位为准。',
+        hours:'按约 10:00-20:10/20:40 保守规划；最终以官网或 Google 地图当天为准。',
+        target:'iPad Pro 13 M5 512 Go Wi‑Fi Noir sidéral / Argent；Darty页面通常写 “vendu et expédié par Darty”。',
+        snapshot:'2026-08-01：Darty 曾显示 13英寸 M5 512GB Wi‑Fi 约 €1,719.99，5G版约 €1,969.99；需点门店库存确认。',
+        tax:'和 Fnac 一样，现场先问 PABLO/détaxe。若不能退税但价格同为 €1,719.99，也仍比 Apple 标价低约 €199。',
+        strategy:'作为价格和库存的备份，不建议为它专门绕远，除非 Fnac/Boulanger都没货。',
+        official:'https://www.darty.com/',
+        storeUrl:'https://www.darty.com/nav/extra/magasins',
+        stockUrl:'https://www.darty.com/nav/recherche/ipad%20pro%2013%20m5%20512go.html',
+        searchUrl:'https://www.darty.com/nav/recherche/ipad%20pro%2013%20m5%20512%20go.html',
+        mapsUrl:'https://www.google.com/maps/search/?api=1&query=Darty%20Madeleine%20Paris'
+      },
+      {
+        name:'Apple Opéra｜苹果直营店 Opéra',
+        lat:48.8717,
+        lng:2.3318,
+        type:'shop',
+        rank:'兜底顺位：最稳的新机和服务，但大概率没有打折',
+        address:'12 rue Halévy, 75009 Paris，离歌剧院片区酒店和老佛爷很近。',
+        hours:'官网当前显示：周一至周六 10:00-20:40，周日 11:00-19:40；仍以当天官网为准。',
+        target:'iPad Pro 13-inch M5 512GB Wi‑Fi / Wi‑Fi + Cellular；可顺手确认英文键盘 MacBook 库存。',
+        snapshot:'2026-08-01：Apple France 原价基准约 €1,919（13英寸 M5 512GB Wi‑Fi）/ €2,169（5G版）；优点是库存和售后最清楚。',
+        tax:'直营店通常流程清楚，但折扣空间最小；若已经在Boulanger/Fnac/Darty拿到 €1,719 左右且可退税，直营店不优先。',
+        strategy:'如果当天所有打折店都不确定、自营/退税说不清，Apple Opéra是安全降落伞。',
+        official:'https://www.apple.com/fr/retail/opera/',
+        storeUrl:'https://www.apple.com/fr/retail/opera/',
+        stockUrl:'https://www.apple.com/fr/shop/buy-ipad/ipad-pro',
+        searchUrl:'https://www.apple.com/fr/shop/buy-ipad/ipad-pro',
+        mapsUrl:'https://www.google.com/maps/search/?api=1&query=Apple%20Opera%2012%20rue%20Halevy%2075009%20Paris'
+      },
+      {
+        name:'Westfield Les 4 Temps / La Défense｜拉德芳斯大型商场',
+        lat:48.8919,
+        lng:2.2370,
+        type:'shop',
+        rank:'远端备选：如果你8/23住/经过 La Défense，可集中看 Fnac/Darty/大型商场库存',
+        address:'La Défense 商圈，适合从 Villa Savoye 回巴黎西侧时顺路，不适合8/19从市中心专门跑。',
+        hours:'大型商场通常晚关，但各店不同；必须以商场/店铺当天页面为准。',
+        target:'同样搜 iPad Pro 13 M5 512Go；同时可比较 MacBook 英文键盘是否有现货。',
+        snapshot:'作为路线备选写入地图，不代表当前有货。它的价值是“路线空间上顺”，不是价格必然更低。',
+        tax:'商场内不同店铺退税规则不同，仍以购买店能否开 PABLO 为准。',
+        strategy:'如果8/23本来就住西侧或去 Villa Savoye，它可以替代市中心购物；否则不建议专门去。',
+        official:'https://www.westfield.com/france/les4temps',
+        storeUrl:'https://www.westfield.com/france/les4temps',
+        stockUrl:'https://www.fnac.com/SearchResult/ResultList.aspx?Search=ipad%20pro%2013%20m5%20512go',
+        searchUrl:'https://www.google.com/search?q=site%3Afnac.com+OR+site%3Adarty.com+iPad+Pro+13+M5+512Go+La+D%C3%A9fense',
+        mapsUrl:'https://www.google.com/maps/search/?api=1&query=Westfield%20Les%204%20Temps%20La%20Defense'
+      }
+    ];
+
+    const tripPlaces = [
+      {name:'Bergen Airport Flesland｜卑尔根机场取车', lat:60.2934, lng:5.2181, type:'must', time:'8/10 13:05取车', stay:'取车/整理行李 45-60分钟', note:'法国飞抵卑尔根后从这里开启挪威西部自驾。'},
+      {name:'Stegastein / Aurlandsfjellet｜斯泰加斯坦观景台 / 艾于兰山路', lat:60.9083, lng:7.2124, type:'must', time:'8/10 傍晚前后', stay:'30-45分钟', note:'如果从Bergen开到Sogndal，这里是最值得插入的国家观光公路节点。'},
+      {name:'Sognefjord Lodge｜8/10 住宿', lat:61.1848, lng:7.2320, type:'maybe', time:'8/10 晚上抵达', stay:'住宿', note:'Sogndal/Kaupanger附近，第二天进入Sognefjellet动线。'},
+      {name:'Gaupne / Sognefjellet west｜松恩山路西端', lat:61.4054, lng:7.2867, type:'route', time:'8/11 上午', stay:'补给/短停 10-20分钟', note:'从这里逐渐进入Sognefjellet国家观光公路。'},
+      {name:'Turtagrø｜Sognefjellet山路节点', lat:61.4998, lng:7.8045, type:'route', time:'8/11 中午前', stay:'15-30分钟', note:'山路氛围开始变强，适合短停拍照。'},
+      {name:'Sognefjellshytta / high mountain｜Sognefjellet高山区', lat:61.5647, lng:8.0062, type:'must', time:'8/11 中午左右', stay:'30-45分钟', note:'Sognefjellet最核心的高山道路体验之一，天气好时建议多留一点时间。'},
+      {name:'Lom｜洛姆', lat:61.8370, lng:8.5686, type:'maybe', time:'8/11 午后', stay:'午餐/补给 45-60分钟', note:'木板教堂和小镇补给节点；不要在这里耗太久。'},
+      {name:'Gamle Strynefjellsvegen｜老斯特林山路', lat:61.9850, lng:7.4150, type:'must', time:'8/11 下午', stay:'沿途多点累计45-75分钟', note:'旧山路是当天第二条重点国家观光公路，路况和开放状态必须当天复核。'},
+      {name:'Flydalsjuvet / Geiranger｜弗吕达尔峡谷 / 盖朗厄尔', lat:62.0963, lng:7.2272, type:'must', time:'8/11 傍晚', stay:'30-45分钟', note:'盖朗厄尔经典俯瞰点，光线合适时很值得。'},
+      {name:'Gudbrandsjuvet｜古德布兰峡谷', lat:62.3306, lng:7.4691, type:'strong', time:'8/11傍晚或8/12早晨', stay:'20-30分钟', note:'Valldal附近短停点，如果8/11太晚可放到8/12早晨。'},
+      {name:'Valldal Fjord Inn｜8/11 住宿', lat:62.2979, lng:7.2635, type:'maybe', time:'8/11 晚上', stay:'住宿', note:'第二天走Trollstigen很顺。'},
+      {name:'Trollstigen Visitor Centre｜精灵之路观景台', lat:62.4548, lng:7.6636, type:'must', time:'8/12 上午', stay:'45-75分钟', note:'Geiranger-Trollstigen国家观光路线最关键节点之一，停车、步道和天气都要留余量。'},
+      {name:'Åndalsnes｜翁达尔斯内斯', lat:62.5675, lng:7.6871, type:'maybe', time:'8/12 中午前后', stay:'补给/短停 20-40分钟', note:'Trollstigen下山后的交通节点。'},
+      {name:'Sunndalsøra｜孙达尔瑟拉途径点', lat:62.6754, lng:8.5633, type:'route', time:'8/12 下午', stay:'午餐/休息 30-45分钟', note:'你倾向经这里去Trondheim，风景和路线完整性比更短路线更好。'},
+      {name:'Trondheim Airport Hotel｜特隆赫姆机场还车住宿', lat:63.4578, lng:10.9239, type:'must', time:'8/12 19:05-20:55', stay:'还车+住宿', note:'租车预订还车点；建议20:55前充裕抵达。'},
+      {name:'Leknes Airport｜莱克内斯机场取还车', lat:68.1525, lng:13.6094, type:'must', time:'8/13 13:05取车；8/17 18:05还车', stay:'取还车 45-60分钟', note:'Lofoten段行动基点。'},
+      {name:'Lofoten Westview Cabin｜罗弗敦住宿', lat:68.1640, lng:13.7200, type:'maybe', time:'8/13-8/17', stay:'住宿', note:'Leknes周边，作为中部机动基地。'},
+      {name:'Haukland Beach｜豪克兰海滩', lat:68.1983, lng:13.5328, type:'must', time:'天气窗口优先', stay:'1-2小时', note:'Lofoten最适合你反复看光线、拍照、发呆的海滩之一。'},
+      {name:'Uttakleiv Beach｜乌塔克莱夫海滩', lat:68.2101, lng:13.5076, type:'must', time:'傍晚/夜间光线', stay:'1-2小时', note:'和Haukland可组合；风大时无人机谨慎。'},
+      {name:'Unstad Beach｜温斯塔冲浪海滩', lat:68.2700, lng:13.5840, type:'strong', time:'北岸天气窗口', stay:'1小时', note:'更野、更冷峻，适合拍海岸线。'},
+      {name:'Ramberg / Fredvang｜拉姆贝格 / 弗雷德旺', lat:68.0890, lng:13.2300, type:'strong', time:'西线大景观日', stay:'半天机动', note:'若天气好，可继续接Kvalvika/Ryten，但独自徒步要谨慎。'},
+      {name:'Reine / Hamnøy｜雷讷 / 哈姆内伊', lat:67.9450, lng:13.1320, type:'maybe', time:'天气好且体力足', stay:'半天到一天', note:'经典但较远，不必每日围着这里跑。'},
+      {name:'Lyon Saint-Exupéry TGV｜里昂圣埃克絮佩里TGV站', lat:45.7208, lng:5.0756, type:'must', time:'8/20 约12:15抵达，13:25左右开车离开', stay:'Calatrava建筑观察40-45分钟 + 取车30分钟', note:'按上午火车方案估算：先看Calatrava作品，再在机场站取车，之后才真正开始法国建筑自驾。'},
+      {name:'Firminy-Vert / Saint-Pierre｜菲尔米尼圣皮埃尔教堂', lat:45.3885, lng:4.2873, type:'must', time:'8/20 约14:00-16:05', stay:'精华看1-1.5小时', note:'因为上午先到Lyon机场站并取车，这里不能深逛太久；教堂和最关键的柯布西耶建筑关系优先。'},
+      {name:'Couvent de La Tourette｜拉图雷特修道院', lat:45.8202, lng:4.6234, type:'must', time:'8/20 约16:50-17:15抵达', stay:'住宿+深度体验', note:'法国段核心，不是参观建筑，而是住进建筑。这个时间安排已经偏紧，取车/路况若延误，应压缩Firminy。'},
+      {name:'Beaune｜伯恩', lat:47.0260, lng:4.8400, type:'maybe', time:'8/21-8/23住宿', stay:'住宿/补给', note:'作为Ronchamp和勃艮第路线的基地。'},
+      {name:'Ronchamp｜朗香教堂', lat:47.7040, lng:6.6209, type:'must', time:'8/22', stay:'2.5-3小时', note:'柯布西耶核心建筑日，重点看厚墙、光、屋顶与山丘关系。'},
+      {name:'Route des Grands Crus｜勃艮第金丘路线', lat:47.1390, lng:4.9490, type:'strong', time:'8/23 上午', stay:'精华段2-3小时', note:'只走精华段，不要把Auxerre/Chablis等塞回来。'},
+      {name:'Paris CDG｜戴高乐机场还车/返程', lat:49.0097, lng:2.5479, type:'must', time:'8/24 下午-晚上', stay:'还车+退税+值机', note:'22:15起飞，仍建议从容处理还车和退税。'}
+    ];
+
+    const lodgingStops = [
+      {name:'Sognefjord Lodge｜松达尔附近住宿', lat:61.1848, lng:7.2320, nights:1, dates:'8/10-8/11', note:'抵达卑尔根并走Aurlandsfjellet后的第一晚，第二天进入Sognefjellet。'},
+      {name:'Valldal Fjord Inn｜瓦尔达尔住宿', lat:62.2979, lng:7.2635, nights:1, dates:'8/11-8/12', note:'Geiranger-Trollstigen之间最顺的落脚点，第二天早上补Gudbrandsjuvet和Trollstigen。'},
+      {name:'Trondheim Airport Hotel｜特隆赫姆机场住宿', lat:63.4578, lng:10.9239, nights:1, dates:'8/12-8/13', note:'还车后机场旁休息，第二天飞Leknes。'},
+      {name:'Lofoten Westview Cabin｜罗弗敦住宿', lat:68.1640, lng:13.7200, nights:4, dates:'8/13-8/17', note:'Lofoten中部基地，适合根据天气窗口往Haukland/Uttakleiv/西线机动。'},
+      {name:'Oslo Airport Hotel｜奥斯陆机场住宿', lat:60.1939, lng:11.1004, nights:1, dates:'8/17-8/18', note:'从Lofoten回奥斯陆后的机场过渡夜，第二天飞巴黎。'},
+      {name:'Opéra District Hotel｜巴黎歌剧院区酒店', lat:48.8716, lng:2.3370, nights:2, dates:'8/18-8/20', note:'巴黎段基点；8/20早上去Gare de Lyon坐车到Lyon Saint-Exupéry TGV。'},
+      {name:'Éveux Monastery Stay｜拉图雷特修道院住宿', lat:45.8202, lng:4.6234, nights:1, dates:'8/20-8/21', note:'法国现代建筑线的核心住宿点，8/20抵达时间需要重点保护。'},
+      {name:'Burgundy Base Hotel｜伯恩附近住宿', lat:47.0260, lng:4.8400, nights:2, dates:'8/21-8/23', note:'朗香、勃艮第和回巴黎西侧之间的缓冲基地。'},
+      {name:'Paris West Hotel｜巴黎西侧住宿', lat:48.8919, lng:2.2370, nights:1, dates:'8/23-8/24', note:'可服务Villa Savoye、购物和次日去CDG还车；具体酒店仍待定。'}
+    ];
+
+    const supplyStops = [
+      {name:'Bergen Airport / Kokstad采购候选｜卑尔根机场附近补给', lat:60.3090, lng:5.2680, kind:'grocery', stage:'8/10取车后', why:'机场取车后最适合先补水、零食、简单早餐和车上食物，不必进卑尔根市中心。', query:'supermarket Kokstad Bergen Airport Norway'},
+      {name:'Bergen Airport / Flesland加油候选｜卑尔根机场附近加油', lat:60.2960, lng:5.2300, kind:'fuel', stage:'8/10取车后确认油量', why:'取车后如果油量/还车规则需要确认，可在机场外围先处理；实际按租车油量政策决定。', query:'gas station Bergen Airport Flesland Norway'},
+      {name:'Voss采购候选｜沃斯补给', lat:60.6286, lng:6.4147, kind:'grocery', stage:'8/10下午', why:'Bergen到Aurland中间最大的友好补给点之一，停车和超市选择通常比山路小镇更稳。', query:'supermarket Voss Norway'},
+      {name:'Voss加油候选｜沃斯加油', lat:60.6310, lng:6.4230, kind:'fuel', stage:'8/10下午', why:'进入更长峡湾/山路前的稳妥加油点。', query:'gas station Voss Norway'},
+      {name:'Aurland / Flåm采购候选｜艾于兰/弗洛姆轻补给', lat:60.8630, lng:7.1130, kind:'grocery', stage:'8/10傍晚前', why:'进入Aurlandsfjellet高山段前后可作轻补给，不建议指望这里完成大采购。', query:'supermarket Aurland Flam Norway'},
+      {name:'Sogndal采购候选｜松达尔大补给', lat:61.2297, lng:7.1018, kind:'grocery', stage:'8/10晚或8/11早', why:'Sognefjord Lodge附近最适合作为第二天Sognefjellet前的大补给点。', query:'Rema 1000 Extra supermarket Sogndal Norway'},
+      {name:'Sogndal加油候选｜松达尔加油', lat:61.2310, lng:7.1030, kind:'fuel', stage:'8/10晚或8/11早', why:'进入Sognefjellet前建议油量从容。', query:'gas station Sogndal Norway'},
+      {name:'Gaupne采购候选｜高普内补给', lat:61.4054, lng:7.2867, kind:'grocery', stage:'8/11上午', why:'进入Sognefjellet西端前的最后一类友好节点，适合临时补水/食物。', query:'supermarket Gaupne Norway'},
+      {name:'Lom采购候选｜洛姆午餐/补给', lat:61.8370, lng:8.5686, kind:'grocery', stage:'8/11午后', why:'Sognefjellet之后、老斯特林山路之前的关键补给镇，适合午餐和补车上食物。', query:'supermarket Lom Norway'},
+      {name:'Lom加油候选｜洛姆加油', lat:61.8378, lng:8.5700, kind:'fuel', stage:'8/11午后', why:'下午继续老山路和Geiranger前的稳妥加油点。', query:'gas station Lom Norway'},
+      {name:'Stryn采购候选｜斯特林补给', lat:61.9040, lng:6.7220, kind:'grocery', stage:'8/11下午机动', why:'如果老斯特林山路之后绕到Stryn一侧，这里比Geiranger更适合补给。', query:'supermarket Stryn Norway'},
+      {name:'Geiranger轻补给候选｜盖朗厄尔小补给', lat:62.1010, lng:7.2070, kind:'grocery', stage:'8/11傍晚', why:'只适合临时补给，不建议把正餐采购压在这里。', query:'Joker supermarket Geiranger Norway'},
+      {name:'Valldal采购候选｜瓦尔达尔住宿前补给', lat:62.2979, lng:7.2635, kind:'grocery', stage:'8/11晚或8/12早', why:'住宿点附近，可补早餐、路上水果和水。', query:'supermarket Valldal Norway'},
+      {name:'Åndalsnes采购候选｜翁达尔斯内斯补给', lat:62.5675, lng:7.6871, kind:'grocery', stage:'8/12中午', why:'Trollstigen后进入去Trondheim长段前，很适合休息和补给。', query:'Rema 1000 Extra supermarket Andalsnes Norway'},
+      {name:'Åndalsnes加油候选｜翁达尔斯内斯加油', lat:62.5660, lng:7.6880, kind:'fuel', stage:'8/12中午', why:'离开Trollstigen后建议在这里把油量处理到安心。', query:'gas station Andalsnes Norway'},
+      {name:'Sunndalsøra采购候选｜孙达尔瑟拉补给', lat:62.6754, lng:8.5633, kind:'grocery', stage:'8/12下午', why:'你选择经Sunndalsøra去Trondheim时的好休息点。', query:'supermarket Sunndalsora Norway'},
+      {name:'Sunndalsøra加油候选｜孙达尔瑟拉加油', lat:62.6740, lng:8.5620, kind:'fuel', stage:'8/12下午', why:'下午后半程前的稳妥加油点。', query:'gas station Sunndalsora Norway'},
+      {name:'Oppdal采购候选｜奥普达尔补给', lat:62.5940, lng:9.6920, kind:'grocery', stage:'8/12傍晚前', why:'去Trondheim机场前最后的大型友好节点之一，适合休息和采购。', query:'supermarket Oppdal Norway'},
+      {name:'Oppdal加油候选｜奥普达尔加油', lat:62.5950, lng:9.6900, kind:'fuel', stage:'8/12傍晚前', why:'从这里到机场还车前，油量和还车规则可以再确认。', query:'gas station Oppdal Norway'},
+      {name:'Stjørdal / TRD机场采购候选｜特隆赫姆机场旁补给', lat:63.4680, lng:10.9260, kind:'grocery', stage:'8/12还车前后', why:'机场附近住宿夜可临时买晚餐/早餐；是否还车前绕行看时间。', query:'supermarket Stjordal Trondheim Airport Norway'},
+      {name:'Leknes采购候选｜莱克内斯大补给', lat:68.1470, lng:13.6110, kind:'grocery', stage:'8/13取车后', why:'Lofoten段最适合做大采购的节点，建议上岛取车后优先处理。', query:'Rema 1000 Kiwi Extra supermarket Leknes Norway'},
+      {name:'Leknes加油候选｜莱克内斯加油', lat:68.1480, lng:13.6100, kind:'fuel', stage:'8/13-8/17', why:'罗弗敦中部基地，往西线/北岸前后都适合检查油量。', query:'gas station Leknes Norway'},
+      {name:'Lyon Saint-Exupéry TGV加油候选｜里昂机场站取车后加油', lat:45.7208, lng:5.0756, kind:'fuel', stage:'8/20取车后', why:'法国段取车后先确认油量/还车政策；若满油取车则不用专门加。', query:'gas station Lyon Saint Exupery Airport France'},
+      {name:'Firminy采购候选｜菲尔米尼补给', lat:45.3885, lng:4.2873, kind:'grocery', stage:'8/20下午', why:'如果赶得上且不影响La Tourette入住，可在Firminy做轻补给。', query:'supermarket Firminy France'},
+      {name:'L’Arbresle / Éveux采购候选｜拉图雷特附近轻补给', lat:45.8350, lng:4.6160, kind:'grocery', stage:'8/20入住前机动', why:'La Tourette位置特殊，若晚餐/入住不确定，附近轻补给可作为保险。', query:'supermarket L Arbresle Eveux France'},
+      {name:'Beaune采购候选｜伯恩大补给', lat:47.0260, lng:4.8400, kind:'grocery', stage:'8/21-8/23', why:'勃艮第住宿基地，适合补早餐、水、路餐，也能买一点当地食品。', query:'supermarket Beaune France'},
+      {name:'Beaune加油候选｜伯恩加油', lat:47.0200, lng:4.8350, kind:'fuel', stage:'8/21-8/23', why:'去Ronchamp或回巴黎西侧前都适合在这里补油。', query:'gas station Beaune France'},
+      {name:'Ronchamp轻补给候选｜朗香附近轻补给', lat:47.7040, lng:6.6209, kind:'grocery', stage:'8/21或8/22', why:'只作为轻补给参考，不建议把正餐和大采购压到朗香附近。', query:'supermarket Ronchamp France'},
+      {name:'Poissy / Villa Savoye采购候选｜萨伏伊别墅附近补给', lat:48.9244, lng:2.0283, kind:'grocery', stage:'8/23-8/24', why:'回巴黎西侧后如住附近，可在Poissy/周边补给。', query:'supermarket Poissy Villa Savoye France'},
+      {name:'CDG还车前加油候选｜戴高乐机场还车前补油', lat:49.0097, lng:2.5479, kind:'fuel', stage:'8/24还车前', why:'如果租车是满油还，进入机场还车前务必按导航找最近且好进出的加油站。', query:'gas station near Paris CDG rental car return France'}
+    ];
+
+    const supplyDetails = {
+      'Bergen Airport / Kokstad采购候选｜卑尔根机场附近补给': {realName:'MENY Dolviken', lat:60.3086190, lng:5.2715380, opening:'Mo-Fr 07:00-22:00, Sa 09:00-20:40', website:'https://meny.no/Finn-butikk/MENY-Dolviken/', arrival:'8/10 周五，取车后约13:05-14:30', conflict:'不冲突。周五到达时通常营业；若严重晚点到22:00后则关闭。', confidence:'OSM/Nominatim含官网与营业时间。备选：REMA 1000 Kokstad，Mo-Fr 06:00-23:00, Sa 07:00-23:00。'},
+      'Bergen Airport / Flesland加油候选｜卑尔根机场附近加油': {realName:'Circle K Flesland', lat:60.2926820, lng:5.2349610, opening:'24/7', website:'https://www.circlek.no/', arrival:'8/10 周五，取车后', conflict:'不冲突，24小时。', confidence:'OSM/Nominatim营业时间。'},
+      'Voss采购候选｜沃斯补给': {realName:'Bunnpris Voss', lat:60.6291000, lng:6.4243680, opening:'Mo-Fr 06:00-23:00, Sa-Su 08:00-23:00', website:'https://bunnpris.no/', arrival:'8/10 周五下午', conflict:'不冲突。即使下午较晚通常也能补给。', confidence:'OSM/Nominatim营业时间；MENY Voss也是可选项。'},
+      'Voss加油候选｜沃斯加油': {realName:'St1 Voss', lat:60.6310, lng:6.4230, opening:'未在公开地图数据中写明', website:'https://www.st1.no/', arrival:'8/10 周五下午', conflict:'未知。作为候选加油点可保留，但当天请点Google Maps复核；若担心，优先机场Circle K或Sogndal/St1。', confidence:'公开地图仅命中真实名称，未给营业时间。'},
+      'Aurland / Flåm采购候选｜艾于兰/弗洛姆轻补给': {realName:'Coop Marked Flåm', lat:60.8640000, lng:7.1160500, opening:'Mo-Fr 08:00-20:40; Sa 09:00-18:35; Su 12:00-18:35', website:'https://www.coop.no/butikker/coop-marked-matkroken/coop-marked-flam-1414', arrival:'8/10 周五傍晚前后', conflict:'可能有冲突。若你18:35-20:40之间到还可以；若晚点超过20:40会关门。', confidence:'OSM/Nominatim含官网与营业时间。'},
+      'Sogndal采购候选｜松达尔大补给': {realName:'REMA 1000 Sogndal', lat:61.2261850, lng:7.1004030, opening:'Mo-Sa 07:00-23:00', website:'https://www.rema.no/', arrival:'8/10 周五晚或8/11 周六早', conflict:'基本不冲突。周五/周六到23:00；如果8/10非常晚才到，可能关门。', confidence:'OSM/Nominatim营业时间；Extra Sogndal同为Mo-Sa 07:00-23:00。'},
+      'Sogndal加油候选｜松达尔加油': {realName:'St1 Sogndal', lat:61.2310, lng:7.1030, opening:'Mo-Sa 06:00-24:00, Su 06:00-01:00', website:'https://www.st1.no/', arrival:'8/10 周五晚或8/11 周六早', conflict:'不冲突。时间覆盖很宽。', confidence:'OSM/Nominatim营业时间。'},
+      'Gaupne采购候选｜高普内补给': {realName:'SPAR Gaupne', lat:61.4054, lng:7.2867, opening:'Mo-Fr 08:00-21:40, Sa 08:00-20:40', website:'https://spar.no/', arrival:'8/11 周六上午', conflict:'不冲突。你预计上午经过，周六营业到20:40。', confidence:'OSM/Nominatim营业时间。'},
+      'Lom采购候选｜洛姆午餐/补给': {realName:'Extra Lom', lat:61.8370, lng:8.5686, opening:'Mo-Fr 07:00-23:00; Sa 08:00-21:40', website:'https://www.coop.no/', arrival:'8/11 周六午后', conflict:'不冲突。周六到21:40。', confidence:'OSM/Nominatim营业时间。'},
+      'Lom加油候选｜洛姆加油': {realName:'Esso Lom', lat:61.8378, lng:8.5700, opening:'Mo-Sa 08:00-21:40, Su 09:00-21:40', website:'https://www.esso.no/', arrival:'8/11 周六午后', conflict:'不冲突。周六到21:40。', confidence:'OSM/Nominatim营业时间。'},
+      'Stryn采购候选｜斯特林补给': {realName:'Bunnpris Stryn', lat:61.9040, lng:6.7220, opening:'Mo-Fr 08:00-22:00, Sa 08:00-20:40', website:'https://bunnpris.no/', arrival:'8/11 周六下午，只有改走/经过Stryn时使用', conflict:'通常不冲突，但周六20:40关门；若你按当前主线不进Stryn，这点只是机动备选。', confidence:'OSM/Nominatim营业时间。'},
+      'Geiranger轻补给候选｜盖朗厄尔小补给': {realName:'Joker Geiranger', lat:62.1010, lng:7.2070, opening:'Mo-Fr 09:00-19:40, Sa 09:00-18:35', website:'https://joker.no/', arrival:'8/11 周六傍晚', conflict:'高风险冲突。你很可能18:35后才到，届时已关门；不要把正餐/大采购压在这里。', confidence:'OSM/Nominatim营业时间。'},
+      'Valldal采购候选｜瓦尔达尔住宿前补给': {realName:'SPAR Valldal', lat:62.2979, lng:7.2635, opening:'Mo-Fr 08:00-21:40, Sa 08:00-20:40', website:'https://spar.no/', arrival:'8/11 周六晚或8/12 周日早', conflict:'有冲突风险。8/11若20:40后到会关；8/12周日未列营业，按不可依赖处理。建议在Lom/Åndalsnes补。', confidence:'OSM/Nominatim营业时间。'},
+      'Åndalsnes采购候选｜翁达尔斯内斯补给': {realName:'Bunnpris Åndalsnes', lat:62.5579140, lng:7.6838120, opening:'Mo-Fr 07:00-22:00, Sa 08:00-21:40, Su 10:00-18:35', website:'https://bunnpris.no/', arrival:'8/12 周日中午前后', conflict:'不冲突。周日10:00-18:35，是这一站比REMA/Extra更适合你的原因。', confidence:'OSM/Nominatim营业时间。'},
+      'Åndalsnes加油候选｜翁达尔斯内斯加油': {realName:'YX Truck Veøy Åndalsnes', lat:62.5660, lng:7.6880, opening:'未在公开地图数据中写明', website:'https://www.yx.no/', arrival:'8/12 周日中午前后', conflict:'未知。作为加油候选保留；当天请用Google Maps确认营业/自助支付。', confidence:'公开地图命中名称，未给营业时间。'},
+      'Sunndalsøra采购候选｜孙达尔瑟拉补给': {realName:'Bunnpris Sunndalsøra', lat:62.6754, lng:8.5633, opening:'Mo-Fr 08:00-22:00, Sa 09:00-21:40, Su 11:00-21:40', website:'https://bunnpris.no/', arrival:'8/12 周日下午', conflict:'不冲突。周日11:00-21:40，非常适合你这条经Sunndalsøra的路线。', confidence:'OSM/Nominatim营业时间。'},
+      'Sunndalsøra加油候选｜孙达尔瑟拉加油': {realName:'Uno-X Sunndalsøra', lat:62.6740, lng:8.5620, opening:'未在公开地图数据中写明', website:'https://unox.no/', arrival:'8/12 周日下午', conflict:'未知。Uno-X多为自助站，但仍需当天确认。', confidence:'公开地图命中名称，未给营业时间。'},
+      'Oppdal采购候选｜奥普达尔补给': {realName:'REMA 1000 Oppdal', lat:62.5940, lng:9.6920, opening:'Mo-Sa 07:00-23:00, Su 10:00-20:40', website:'https://www.rema.no/', arrival:'8/12 周日傍晚前', conflict:'不冲突，但若20:40后到会关。', confidence:'OSM/Nominatim营业时间。'},
+      'Oppdal加油候选｜奥普达尔加油': {realName:'Circle K Oppdal', lat:62.5950, lng:9.6900, opening:'Sa 07:00-22:00, Su 08:00-23:00', website:'https://www.circlek.no/', arrival:'8/12 周日傍晚前', conflict:'不冲突。周日到23:00。', confidence:'OSM/Nominatim营业时间；工作日字段未返回，需当天复核。'},
+      'Stjørdal / TRD机场采购候选｜特隆赫姆机场旁补给': {realName:'KIWI Mindes hus / REMA 1000 Stjørdal一带', lat:63.4670048, lng:10.9217468, opening:'主要超市多为 Mo-Sa 07:00-23:00；周日未列', website:'https://kiwi.no/', arrival:'8/12 周日晚，还车前后', conflict:'大概率冲突。8/12是周日，Stjørdal普通超市不可依赖；机场/酒店便利店另行确认。', confidence:'Nominatim命中真实超市，但周日营业未列。'},
+      'Leknes采购候选｜莱克内斯大补给': {realName:'REMA 1000 Leknes', lat:68.1446750, lng:13.6195386, opening:'Mo-Sa 07:00-23:00, Su 10:00-22:00', website:'https://www.rema.no/', arrival:'8/13 周一取车后', conflict:'不冲突。周一到23:00。', confidence:'OSM/Nominatim营业时间；Extra/KIWI Leknes也可选。'},
+      'Leknes加油候选｜莱克内斯加油': {realName:'Circle K Leknes', lat:68.1480, lng:13.6100, opening:'Mo-Fr 06:30-23:00, Sa 08:00-23:00, Su 09:00-23:00', website:'https://www.circlek.no/', arrival:'8/13-8/17 Lofoten机动', conflict:'不冲突。覆盖你大多数出行时段。', confidence:'OSM/Nominatim营业时间。'},
+      'Lyon Saint-Exupéry TGV加油候选｜里昂机场站取车后加油': {realName:'Esso Meyzieu', lat:45.7763430, lng:4.9903882, opening:'24/7', website:'https://www.esso.fr/', arrival:'8/20 周一13:25后，取车后视油量决定', conflict:'不冲突，24小时。但位置未必最顺路，若满油取车不必专门绕。', confidence:'Nominatim营业时间。'},
+      'Firminy采购候选｜菲尔米尼补给': {realName:'Intermarché Firminy', lat:45.3793657, lng:4.2758140, opening:'24/7', website:'https://www.intermarche.com/', arrival:'8/20 周一约14:00-16:05', conflict:'不冲突，但24/7字段可能对应自助/服务范围，实际购物请当天复核。', confidence:'Nominatim营业时间；另有Lidl Firminy但未返回营业时间。'},
+      'L’Arbresle / Éveux采购候选｜拉图雷特附近轻补给': {realName:'Carrefour Market L’Arbresle', lat:45.8238510, lng:4.6059442, opening:'Mo-Sa 08:30-20:10; Su 08:30-13:05', website:'https://www.carrefour.fr/magasin/market-l-arbresle', arrival:'8/20 周一16:30-17:00前后', conflict:'不冲突，但如果La Tourette入住很紧，不建议为了采购绕太久。', confidence:'OSM/Nominatim含官网与营业时间。'},
+      'Beaune采购候选｜伯恩大补给': {realName:'E.Leclerc Beaune', lat:47.0423552, lng:4.8414552, opening:'Mo-Sa 08:30-19:40', website:'https://www.e.leclerc/mag/e-leclerc-c-c-beaune', arrival:'8/21-8/23，最好白天或傍晚前', conflict:'通常不冲突；若晚于19:40到会关门。', confidence:'OSM/Nominatim含官网与营业时间。'},
+      'Beaune加油候选｜伯恩加油': {realName:'Gas Station (Netto / Les Mousquetaires)', lat:47.0200, lng:4.8350, opening:'24/7', website:'https://www.intermarche.com/', arrival:'8/21-8/23', conflict:'不冲突，24小时。', confidence:'Nominatim营业时间。'},
+      'Ronchamp轻补给候选｜朗香附近轻补给': {realName:'Carrefour Contact Ronchamp', lat:47.6976030, lng:6.6423548, opening:'Mo-Sa 08:00-20:40; Su 09:00-13:00', website:'https://www.carrefour.fr/magasin/contact-ronchamp', arrival:'8/21或8/22参观朗香前后', conflict:'工作日不冲突；若改成周日则下午会关。', confidence:'OSM/Nominatim含官网与营业时间。'},
+      'Poissy / Villa Savoye采购候选｜萨伏伊别墅附近补给': {realName:'Carrefour City Poissy', lat:48.9279773, lng:2.0453600, opening:'Mo-Sa 07:00-21:40; Su 09:00-13:00', website:'https://www.carrefour.fr/magasin/city-poissy-gaulle', arrival:'8/23 周四 Villa Savoye前后', conflict:'不冲突。周四到21:40。', confidence:'OSM/Nominatim含官网与营业时间。'},
+      'CDG还车前加油候选｜戴高乐机场还车前补油': {realName:'Relais TotalEnergies De Roissy 1', lat:49.0092930, lng:2.5374815, opening:'24/7', website:'https://store.totalenergies.fr/en_EN/NF059705', arrival:'8/24 周五还车前', conflict:'不冲突，24小时。还车前仍需确认该站是否顺路且好进出。', confidence:'OSM/Nominatim含官网与营业时间。'}
+    };
+
+    const driveSegments = [
+      {name:'D1 Bergen Airport → Aurlandsfjellet → Sognefjord Lodge', date:'2026-08-10T14:30:00+02:00', duration:'浏览器会按真实道路重算', bearing:'东北向，进入Aurlandsfjellet后转高山路', color:norwayLine, points:[[60.2934,5.2181],[60.6286,6.4147],[60.8780,6.8380],[60.9083,7.2124],[60.9628,7.3611],[60.9845,7.3975],[61.0970,7.4820],[61.1848,7.2320]], note:'这段会先到Aurland，再沿Aurlandsfjellet官方路线串联Stegastein、Flotane、Vedahaugane，之后到住宿。若晚点，应优先保Stegastein，压缩高山段停留。'},
+      {name:'D2 Sognefjord Lodge → Sognefjellet → Lom', date:'2026-08-11T09:00:00+02:00', duration:'浏览器会按真实道路重算', bearing:'东北/东向', color:norwayLine, points:[[61.1848,7.2320],[61.3840,7.3630],[61.5020,7.8140],[61.5140,7.8430],[61.5480,7.9580],[61.5647,8.0062],[61.6730,8.2760],[61.8370,8.5686]], note:'这段尽量按Sognefjellet官方停靠点串联：Liasanden、Oscarshaug、Mefjellet、Sognefjellshytta、Vegaskjelet。上午到中午光线会受山体遮挡，停车点比纯行驶时间更重要。'},
+      {name:'D2 Lom → Gamle Strynefjellsvegen → Geiranger → Valldal', date:'2026-08-11T14:00:00+02:00', duration:'浏览器会按真实道路重算', bearing:'西北/西向后转北', color:norwayLine, points:[[61.8370,8.5686],[62.0140,7.6310],[61.9650,7.3460],[61.9590,7.2980],[62.0963,7.2272],[62.1260,7.1680],[62.2960,7.1760],[62.2979,7.2635]], note:'这段会尽量连进Gamle Strynefjellsvegen的Øvstefoss/Videfossen，以及Geiranger-Trollstigen的Flydalsjuvet、Ørnesvingen和渡轮节点。下午西行可能逆光，但山路轮廓感会很强。'},
+      {name:'D3 Valldal → Gudbrandsjuvet → Trollstigen → Åndalsnes', date:'2026-08-12T09:00:00+02:00', duration:'浏览器会按真实道路重算', bearing:'东/东北后转北', color:norwayLine, points:[[62.2979,7.2635],[62.3306,7.4691],[62.4548,7.6636],[62.5675,7.6871]], note:'上午先补Gudbrandsjuvet，再进入Trollstigen核心。观景台和步道建议留足时间，天气差时也不要赶得太紧。'},
+      {name:'D3 Åndalsnes → Sunndalsøra → Trondheim Airport', date:'2026-08-12T13:30:00+02:00', duration:'约5-6小时含休息', bearing:'东北/东向后转北', color:norwayLine, points:[[62.5675,7.6871],[62.6754,8.5633],[62.5940,9.6920],[63.4578,10.9239]], note:'下午太阳逐渐偏西，整体多为侧后光；这条比短路线更有完整山地公路感，但不要压到还车时间。'},
+      {name:'Lofoten中部基地 → Haukland/Uttakleiv', date:'2026-08-14T20:40:00+02:00', duration:'约25-40分钟单程', bearing:'西/西北向', color:lofotenLine, points:[[68.1640,13.7200],[68.1983,13.5328],[68.2101,13.5076]], note:'午夜太阳季接近尾声，傍晚/夜间太阳偏西北，去海滩方向可能接近迎光，适合看海面反光，但无人机需看风。'},
+      {name:'France Lyon TGV → Firminy → La Tourette', date:'2026-08-20T10:00:00+02:00', duration:'约2.5-3.5小时行车，不含参观', bearing:'西南后转东北', color:franceLine, points:[[45.7208,5.0756],[45.3885,4.2873],[45.8202,4.6234]], note:'上午去Firminy多为西南向，太阳在东南侧；下午去La Tourette转东北向，光线更偏侧后。'},
+      {name:'La Tourette → Beaune → Ronchamp → Burgundy → Villa Savoye/CDG', date:'2026-08-22T09:00:00+02:00', duration:'8/21-8/24分段完成', bearing:'北/东北向为主', color:franceLine, points:[[45.8202,4.6234],[47.0260,4.8400],[47.7040,6.6209],[47.1390,4.9490],[48.9244,2.0283],[49.0097,2.5479]], note:'这是法国后半段概览线，实际分三天走；不要按一日路线理解。'}
+    ];
+
+    const segmentColors = ['#d14b3f', '#226ab3', '#16857a', '#b56b1f', '#7b61c9', '#2f855a'];
+    const detailedDriveSegments = [
+      {seq:1, day:'D1 8/10', name:'BGO取车 → Voss', startTime:'2026-08-10T14:30:00+02:00', from:'Bergen Airport Flesland', to:'Voss / 途中补给', points:[[60.2934,5.2181],[60.6286,6.4147]], dwellAtEndMin:15, plannedMinutes:95, note:'离开卑尔根机场后的适应段，先把车、人、导航稳定下来。'},
+      {seq:2, day:'D1 8/10', name:'Voss → Aurland', from:'Voss', to:'Aurland / 艾于兰', points:[[60.6286,6.4147],[60.8780,6.8380]], dwellAtEndMin:15, plannedMinutes:95, note:'逐渐进入峡湾地形；如果取车晚，这段不要停太碎。'},
+      {seq:3, day:'D1 8/10', name:'Aurland → Stegastein', from:'Aurland', to:'Stegastein｜斯泰加斯坦', points:[[60.8780,6.8380],[60.9083,7.2124]], dwellAtEndMin:40, plannedMinutes:30, note:'这段开始正式贴合 Aurlandsfjellet，抵达后建议留出第一段真正的观景时间。'},
+      {seq:4, day:'D1 8/10', name:'Stegastein → Vedahaugane / 高山段', from:'Stegastein', to:'Vedahaugane｜韦达豪根', points:[[60.9083,7.2124],[60.9628,7.3611],[60.9845,7.3975]], dwellAtEndMin:20, plannedMinutes:55, note:'高山路段，包含 Flotane / Vedahaugane 一带；天气差或太晚时可压缩。'},
+      {seq:5, day:'D1 8/10', name:'Vedahaugane → Sognefjord Lodge住宿', from:'Vedahaugane', to:'Sognefjord Lodge', points:[[60.9845,7.3975],[61.0970,7.4820],[61.1848,7.2320]], dwellAtEndMin:0, plannedMinutes:105, note:'当天收尾段，目标是安全到酒店，不必再贪停靠。'},
+
+      {seq:6, day:'D2 8/11', name:'Sognefjord Lodge → Gaupne', startTime:'2026-08-11T09:00:00+02:00', from:'Sognefjord Lodge', to:'Gaupne / Sognefjellet西端', points:[[61.1848,7.2320],[61.3840,7.3630]], dwellAtEndMin:10, plannedMinutes:55, note:'早餐后进入 Sognefjellet 前的热身段。'},
+      {seq:7, day:'D2 8/11', name:'Gaupne → Turtagrø / Liasanden', from:'Gaupne', to:'Turtagrø / Liasanden', points:[[61.3840,7.3630],[61.5020,7.8140]], dwellAtEndMin:20, plannedMinutes:65, note:'从峡谷/林地逐步抬升到山地道路。'},
+      {seq:8, day:'D2 8/11', name:'Turtagrø → Oscarshaug / Mefjellet', from:'Turtagrø', to:'Oscarshaug / Mefjellet', points:[[61.5020,7.8140],[61.5140,7.8430],[61.5480,7.9580]], dwellAtEndMin:30, plannedMinutes:35, note:'Sognefjellet最值得慢下来的观景节点之一。'},
+      {seq:9, day:'D2 8/11', name:'Mefjellet → Sognefjellshytta', from:'Mefjellet', to:'Sognefjellshytta', points:[[61.5480,7.9580],[61.5647,8.0062]], dwellAtEndMin:45, plannedMinutes:15, note:'高山区短段，但停留价值高；可吃东西、看天气、拍高山路。'},
+      {seq:10, day:'D2 8/11', name:'Sognefjellshytta → Lom', from:'Sognefjellshytta', to:'Lom｜洛姆', points:[[61.5647,8.0062],[61.6730,8.2760],[61.8370,8.5686]], dwellAtEndMin:60, plannedMinutes:70, note:'下行到 Lom，适合午餐/补给，但别把下午老山路时间吃掉。'},
+      {seq:11, day:'D2 8/11', name:'Lom → Gamle Strynefjellsvegen东端', from:'Lom', to:'Gamle Strynefjellsvegen东端', points:[[61.8370,8.5686],[62.0140,7.6310]], dwellAtEndMin:15, plannedMinutes:95, note:'下午转入老斯特林山路前的长一点行车段。'},
+      {seq:12, day:'D2 8/11', name:'老斯特林山路 → Øvstefoss / Videfossen', from:'Gamle Strynefjellsvegen东端', to:'Øvstefoss / Videfossen', points:[[62.0140,7.6310],[61.9850,7.4150],[61.9650,7.3460],[61.9590,7.2980]], dwellAtEndMin:25, plannedMinutes:55, note:'旧路核心段，路况开放状态当天复核；适合慢开和短停。'},
+      {seq:13, day:'D2 8/11', name:'瀑布段 → Flydalsjuvet / Geiranger', from:'Videfossen', to:'Flydalsjuvet / Geiranger', points:[[61.9590,7.2980],[62.0963,7.2272]], dwellAtEndMin:40, plannedMinutes:70, note:'抵达盖朗厄尔视野段；如果晚了，拍一两个点就收。'},
+      {seq:14, day:'D2 8/11', name:'Flydalsjuvet → Ørnesvingen', from:'Flydalsjuvet', to:'Ørnesvingen｜鹰之路', points:[[62.0963,7.2272],[62.1260,7.1680]], dwellAtEndMin:25, plannedMinutes:20, note:'短但景观密度高，适合回望峡湾。'},
+      {seq:15, day:'D2 8/11', name:'Ørnesvingen → Linge渡轮 → Valldal住宿', from:'Ørnesvingen', to:'Valldal Fjord Inn', points:[[62.1260,7.1680],[62.2960,7.1760],[62.2979,7.2635]], dwellAtEndMin:0, plannedMinutes:75, note:'含渡轮节奏的收尾段；当天重点是顺利抵达住宿。'},
+
+      {seq:16, day:'D3 8/12', name:'Valldal → Gudbrandsjuvet', startTime:'2026-08-12T09:00:00+02:00', from:'Valldal', to:'Gudbrandsjuvet｜古德布兰峡谷', points:[[62.2979,7.2635],[62.3306,7.4691]], dwellAtEndMin:25, plannedMinutes:35, note:'早晨短段，适合把峡谷栈道补上。'},
+      {seq:17, day:'D3 8/12', name:'Gudbrandsjuvet → Trollstigen', from:'Gudbrandsjuvet', to:'Trollstigen｜精灵之路', points:[[62.3306,7.4691],[62.4548,7.6636]], dwellAtEndMin:70, plannedMinutes:50, note:'进入当天核心。这里宁可少赶一点 Trondheim，也要留足观景台。'},
+      {seq:18, day:'D3 8/12', name:'Trollstigen → Åndalsnes', from:'Trollstigen', to:'Åndalsnes', points:[[62.4548,7.6636],[62.5675,7.6871]], dwellAtEndMin:30, plannedMinutes:35, note:'下山段，路窄弯多；到 Åndalsnes 可休整。'},
+      {seq:19, day:'D3 8/12', name:'Åndalsnes → Sunndalsøra', from:'Åndalsnes', to:'Sunndalsøra', points:[[62.5675,7.6871],[62.6754,8.5633]], dwellAtEndMin:45, plannedMinutes:85, note:'你中意的更完整山地路线，相比更短线更有驾驶体验。'},
+      {seq:20, day:'D3 8/12', name:'Sunndalsøra → Oppdal / 中途休息', from:'Sunndalsøra', to:'Oppdal一带', points:[[62.6754,8.5633],[62.5940,9.6920]], dwellAtEndMin:20, plannedMinutes:105, note:'下午后半段，建议固定安排一次休息，别一口气硬开到机场。'},
+      {seq:21, day:'D3 8/12', name:'Oppdal → Trondheim Airport还车', from:'Oppdal一带', to:'Trondheim Airport Hotel', points:[[62.5940,9.6920],[63.4578,10.9239]], dwellAtEndMin:0, plannedMinutes:120, note:'还车前最后一段，目标是给20:55还车留余量。'},
+
+      {seq:22, day:'Lofoten机动', name:'住宿 → Haukland Beach', startTime:'2026-08-14T20:40:00+02:00', from:'Lofoten Westview Cabin', to:'Haukland Beach', points:[[68.1640,13.7200],[68.1983,13.5328]], dwellAtEndMin:90, plannedMinutes:25, note:'傍晚/夜间光线机动段，适合天气窗口好时去。'},
+      {seq:23, day:'Lofoten机动', name:'Haukland → Uttakleiv', from:'Haukland Beach', to:'Uttakleiv Beach', points:[[68.1983,13.5328],[68.2101,13.5076]], dwellAtEndMin:90, plannedMinutes:10, note:'两处海滩可以连续看，也可以只保留一个。'},
+
+      {seq:24, day:'France 8/20', name:'Lyon Saint-Exupéry TGV → Firminy', startTime:'2026-08-20T13:25:00+02:00', from:'Lyon Saint-Exupéry TGV / Calatrava + 取车后', to:'Firminy-Vert / Saint-Pierre', points:[[45.7208,5.0756],[45.3885,4.2873]], dwellAtEndMin:90, plannedMinutes:75, note:'按9:42左右巴黎出发、约12:15到机场TGV站估算：看Calatrava约45分钟，取车约30分钟，13:25开车。Firminy只能看精华，不能深逛。'},
+      {seq:25, day:'France 8/20', name:'Firminy → La Tourette', from:'Firminy', to:'Couvent de La Tourette', points:[[45.3885,4.2873],[45.8202,4.6234]], dwellAtEndMin:0, plannedMinutes:85, note:'入住时间是关键；若取车或Firminy延误，这段必须优先，必要时缩短Firminy停留。'},
+      {seq:26, day:'France 8/21', name:'La Tourette → Ronchamp', startTime:'2026-08-21T10:30:00+02:00', from:'La Tourette', to:'Ronchamp', points:[[45.8202,4.6234],[47.7040,6.6209]], dwellAtEndMin:180, plannedMinutes:230, note:'长距离建筑日，出发越早越从容。'},
+      {seq:27, day:'France 8/21', name:'Ronchamp → Beaune', from:'Ronchamp', to:'Beaune住宿', points:[[47.7040,6.6209],[47.0260,4.8400]], dwellAtEndMin:0, plannedMinutes:135, note:'看完朗香后回伯恩附近住宿，晚到也比继续赶巴黎舒服。'},
+      {seq:28, day:'France 8/22-23', name:'Beaune → Route des Grands Crus', startTime:'2026-08-22T10:00:00+02:00', from:'Beaune', to:'Route des Grands Crus精华段', points:[[47.0260,4.8400],[47.1390,4.9490]], dwellAtEndMin:150, plannedMinutes:35, note:'给勃艮第一点放松余地；这段不必追多，追舒服。'},
+      {seq:29, day:'France 8/23', name:'Route des Grands Crus → Villa Savoye', startTime:'2026-08-23T11:30:00+02:00', from:'勃艮第精华段', to:'Villa Savoye', points:[[47.1390,4.9490],[48.9244,2.0283]], dwellAtEndMin:75, plannedMinutes:270, note:'长途回巴黎西侧，实际会受巴黎外圈交通影响，建议保守看待。'},
+      {seq:30, day:'France 8/23', name:'Villa Savoye → La Défense / 购物备选', from:'Villa Savoye', to:'La Défense / Westfield Les 4 Temps', points:[[48.9244,2.0283],[48.8919,2.2370]], dwellAtEndMin:90, plannedMinutes:45, note:'如果当天还想买 iPad / Mac，这段把建筑收束和购物连接起来。'},
+      {seq:31, day:'France 8/24', name:'La Défense / 西巴黎 → CDG还车', startTime:'2026-08-24T16:05:00+02:00', from:'La Défense / 西巴黎', to:'Paris CDG', points:[[48.8919,2.2370],[49.0097,2.5479]], dwellAtEndMin:0, plannedMinutes:75, note:'返程日还车和退税都要留余量；这段时间只是规划锚点。'}
+    ];
+
+    const officialScenicRoutes = [
+      {name:'Aurlandsfjellet｜艾于兰山路', active:true, url:'https://www.nasjonaleturistveger.no/en/routes/aurlandsfjellet/', pts:[[60.8780,6.8380],[60.9083,7.2124],[60.9628,7.3611],[60.9845,7.3975],[61.0970,7.4820]]},
+      {name:'Sognefjellet｜松恩山路', active:true, url:'https://www.nasjonaleturistveger.no/en/routes/sognefjellet/', pts:[[61.3840,7.3630],[61.5020,7.8140],[61.5140,7.8430],[61.5480,7.9580],[61.5647,8.0062],[61.6730,8.2760],[61.8370,8.5686]]},
+      {name:'Gamle Strynefjellsvegen｜老斯特林山路', active:true, url:'https://www.nasjonaleturistveger.no/en/routes/gamle-strynefjellsvegen/', pts:[[62.0140,7.6310],[62.0100,7.5200],[61.9850,7.4150],[61.9650,7.3460],[61.9590,7.2980]]},
+      {name:'Geiranger-Trollstigen｜盖朗厄尔-精灵之路', active:true, url:'https://www.nasjonaleturistveger.no/en/routes/geiranger-trollstigen/', pts:[[62.0963,7.2272],[62.1260,7.1680],[62.2960,7.1760],[62.3306,7.4691],[62.4548,7.6636],[62.5675,7.6871]]},
+      {name:'Lofoten｜罗弗敦国家观光公路', active:true, url:'https://www.nasjonaleturistveger.no/en/routes/lofoten/', pts:[[68.3090,14.6510],[68.2950,14.1800],[68.2360,13.7600],[68.3080,13.6680],[68.0890,13.2300],[67.9460,13.0880],[67.9320,13.0280]]},
+      {name:'Hardangervidda｜哈当厄尔高原', pts:[[60.467,7.071],[60.25,7.50],[60.37,8.55]], url:'https://www.nasjonaleturistveger.no/en/routes/hardangervidda/'},
+      {name:'Hardanger｜哈当厄尔', pts:[[60.276,6.252],[60.375,6.72],[60.467,7.071]], url:'https://www.nasjonaleturistveger.no/en/routes/hardanger/'},
+      {name:'Ryfylke｜吕菲尔克', pts:[[58.97,5.73],[59.40,6.25],[59.65,6.80]], url:'https://www.nasjonaleturistveger.no/en/routes/ryfylke/'},
+      {name:'Jæren｜耶伦', pts:[[58.50,5.55],[58.75,5.55],[59.00,5.65]], url:'https://www.nasjonaleturistveger.no/en/routes/jaeren/'},
+      {name:'Rondane｜龙达讷', pts:[[61.72,9.55],[61.95,10.00],[62.15,10.30]], url:'https://www.nasjonaleturistveger.no/en/routes/rondane/'},
+      {name:'Valdresflye｜瓦尔德雷斯高原', pts:[[61.25,8.80],[61.45,8.85],[61.60,8.95]], url:'https://www.nasjonaleturistveger.no/en/routes/valdresflye/'},
+      {name:'Atlanterhavsvegen｜大西洋之路', pts:[[63.00,7.35],[63.02,7.45],[63.06,7.60]], url:'https://www.nasjonaleturistveger.no/en/routes/atlanterhavsvegen/'},
+      {name:'Helgelandskysten｜海尔格兰海岸', pts:[[65.47,12.20],[66.30,13.00],[67.28,14.40]], url:'https://www.nasjonaleturistveger.no/en/routes/helgelandskysten/'},
+      {name:'Senja｜塞尼亚', pts:[[69.25,17.10],[69.40,17.50],[69.50,18.00]], url:'https://www.nasjonaleturistveger.no/en/routes/senja/'},
+      {name:'Andøya｜安岛', pts:[[68.90,15.20],[69.10,15.75],[69.30,16.10]], url:'https://www.nasjonaleturistveger.no/en/routes/andoya/'},
+      {name:'Havøysund｜哈沃于松', pts:[[70.60,24.70],[70.85,24.95],[71.00,24.67]], url:'https://www.nasjonaleturistveger.no/en/routes/havoysund/'},
+      {name:'Varanger｜瓦朗厄尔', pts:[[70.37,29.74],[70.30,30.60],[70.37,31.10]], url:'https://www.nasjonaleturistveger.no/en/routes/varanger/'}
+    ];
+
+    const officialStops = [
+      {route:'Aurlandsfjellet｜艾于兰山路', name:'Stegastein｜斯泰加斯坦观景台', lat:60.9083, lng:7.2124, time:'8/10 约16:30-19:05视取车/路况', stay:'30-45分钟', match:'本次核心停靠点', url:'https://www.nasjonaleturistveger.no/en/routes/aurlandsfjellet/', note:'这条路最有辨识度的观景平台，外挑木平台直面Aurlandsfjord。若天气好，这里值得把行程稍微放慢。', query:['Stegastein viewpoint Aurlandsfjellet exterior daylight', 'Stegastein viewing platform Aurlandsfjord']},
+      {route:'Aurlandsfjellet｜艾于兰山路', name:'Flotane｜弗洛塔讷', lat:60.9628, lng:7.3611, time:'8/10 傍晚，Stegastein后继续翻山时', stay:'10-20分钟', match:'顺路短停', url:'https://www.nasjonaleturistveger.no/en/routes/aurlandsfjellet/', note:'高山路段的开放地貌节点，适合感受Aurlandsfjellet从峡湾到荒原的转换，不建议耗太久。', query:['Flotane Aurlandsfjellet', 'Aurlandsfjellet Flotane Norway landscape']},
+      {route:'Aurlandsfjellet｜艾于兰山路', name:'Vedahaugane｜韦达豪根', lat:60.9845, lng:7.3975, time:'8/10 傍晚，天气和余量允许时', stay:'20-30分钟', match:'很值得但看时间', url:'https://www.nasjonaleturistveger.no/en/routes/aurlandsfjellet/', note:'官方艺术/观景停靠点，山地、步道和装置感较强；如果当天从卑尔根开来已经疲劳，可保留为路过观察。', query:['Vedahaugane Aurlandsfjellet Norway', 'Vedahaugane installation Aurlandsfjellet']},
+
+      {route:'Sognefjellet｜松恩山路', name:'Liasanden｜利亚桑登', lat:61.3840, lng:7.3630, time:'8/11 上午，进入Sognefjellet前段', stay:'10-20分钟', match:'顺路短停', url:'https://www.nasjonaleturistveger.no/en/routes/sognefjellet/', note:'官方休息区之一，靠近道路从峡谷/林地进入更开阔山地之前的过渡段，适合拉伸和观察天气。', query:['Liasanden Sognefjellet rest area', 'Liasanden Norway Sognefjellet']},
+      {route:'Sognefjellet｜松恩山路', name:'Nedre Oscarshaug｜下奥斯卡斯豪格', lat:61.5020, lng:7.8140, time:'8/11 中午前后', stay:'10-20分钟', match:'顺路短停', url:'https://www.nasjonaleturistveger.no/en/routes/sognefjellet/', note:'Sognefjellet高山段的官方观景点之一，适合和Turtagrø/Oscarshaug一起作为山路节奏点。', query:['Nedre Oscarshaug Sognefjellet', 'Oscarshaug Sognefjellet mountains']},
+      {route:'Sognefjellet｜松恩山路', name:'Oscarshaug｜奥斯卡斯豪格', lat:61.5140, lng:7.8430, time:'8/11 中午前后', stay:'15-25分钟', match:'建议停', url:'https://www.nasjonaleturistveger.no/en/routes/sognefjellet/', note:'面向Jotunheimen群山的经典观景点，天气清透时很有价值；如果云层低，可缩短停留。', query:['Oscarshaug Sognefjellet viewpoint', 'Oscarshaug Jotunheimen']},
+      {route:'Sognefjellet｜松恩山路', name:'Mefjellet｜梅山观景点', lat:61.5480, lng:7.9580, time:'8/11 中午', stay:'20-30分钟', match:'强烈建议停', url:'https://www.nasjonaleturistveger.no/en/routes/sognefjellet/', note:'Sognefjellet最有“国家观光公路设计感”的节点之一，高山石阵/平台与远山关系很好。', query:['Mefjellet Sognefjellet', 'Mefjellet viewpoint Norway']},
+      {route:'Sognefjellet｜松恩山路', name:'Sognefjellshytta｜松恩山旅舍', lat:61.5647, lng:8.0062, time:'8/11 中午左右', stay:'30-45分钟', match:'本次核心停靠点', url:'https://www.nasjonaleturistveger.no/en/routes/sognefjellet/', note:'高山区补给与停留节点，既能休息也能观察天气和道路状态；当天不要只把它当打卡点。', query:['Sognefjellshytta Sognefjellet Norway', 'Sognefjellshytta mountain road']},
+      {route:'Sognefjellet｜松恩山路', name:'Vegaskjelet｜韦加谢莱特', lat:61.6730, lng:8.2760, time:'8/11 午后，向Lom方向下行', stay:'15-25分钟', match:'建议停', url:'https://www.nasjonaleturistveger.no/en/routes/sognefjellet/', note:'官方观景结构把山体和道路框成一个视窗，是“建筑化观景”的好例子。', query:['Vegaskjelet Sognefjellet viewpoint', 'Vegaskjelet Norway']},
+
+      {route:'Gamle Strynefjellsvegen｜老斯特林山路', name:'Videfossen｜维德瀑布', lat:61.9590, lng:7.2980, time:'8/11 下午，老斯特林山路西段', stay:'15-25分钟', match:'建议停', url:'https://www.nasjonaleturistveger.no/en/routes/gamle-strynefjellsvegen/', note:'老路上重要的瀑布节点，若下午逆光，水雾和山体轮廓可能反而有戏剧性。', query:['Videfossen Gamle Strynefjellsvegen', 'Videfossen waterfall Norway']},
+      {route:'Gamle Strynefjellsvegen｜老斯特林山路', name:'Øvstefoss｜厄夫斯特瀑布', lat:61.9650, lng:7.3460, time:'8/11 下午', stay:'15-25分钟', match:'建议停', url:'https://www.nasjonaleturistveger.no/en/routes/gamle-strynefjellsvegen/', note:'官方瀑布停靠点，和Videfossen可作为同一段连续体验；停车安全和路况优先。', query:['Øvstefoss Gamle Strynefjellsvegen', 'Ovstefoss waterfall Norway']},
+
+      {route:'Geiranger-Trollstigen｜盖朗厄尔-精灵之路', name:'Flydalsjuvet｜弗吕达尔峡谷', lat:62.0963, lng:7.2272, time:'8/11 傍晚或8/12很早', stay:'30-45分钟', match:'本次核心停靠点', url:'https://www.nasjonaleturistveger.no/en/routes/geiranger-trollstigen/', note:'俯瞰Geiranger峡湾的经典点，若8/11抵达太晚或天气不好，不必硬耗，可把重点留给第二天Trollstigen。', query:['Flydalsjuvet Geiranger viewpoint daylight', 'Flydalsjuvet Geirangerfjord']},
+      {route:'Geiranger-Trollstigen｜盖朗厄尔-精灵之路', name:'Ørnesvingen｜鹰之路观景台', lat:62.1260, lng:7.1680, time:'8/11 傍晚，Geiranger北上时', stay:'20-30分钟', match:'建议停', url:'https://www.nasjonaleturistveger.no/en/routes/geiranger-trollstigen/', note:'从Geiranger爬升后的经典回望点，视野和道路曲线都很强；如果光线太硬，仍适合看地形关系。', query:['Ørnesvingen Geiranger viewpoint', 'Eagle Road viewpoint Geiranger']},
+      {route:'Geiranger-Trollstigen｜盖朗厄尔-精灵之路', name:'Linge ferjekai｜林厄渡轮码头', lat:62.2960, lng:7.1760, time:'8/11 傍晚/夜间通过', stay:'等船+短停', match:'交通节点', url:'https://www.nasjonaleturistveger.no/en/routes/geiranger-trollstigen/', note:'这是路线节奏节点而不是专门景点；渡轮时间会直接影响8/11抵达Valldal。', query:['Linge ferry quay Norway', 'Linge ferjekai Geiranger Trollstigen']},
+      {route:'Geiranger-Trollstigen｜盖朗厄尔-精灵之路', name:'Gudbrandsjuvet｜古德布兰峡谷', lat:62.3306, lng:7.4691, time:'8/11傍晚或8/12早晨', stay:'20-30分钟', match:'顺路且值得', url:'https://www.nasjonaleturistveger.no/en/routes/geiranger-trollstigen/', note:'木栈道与峡谷水流结合的官方停靠点；如果8/11天色已晚，放到8/12早晨会更舒服。', query:['Gudbrandsjuvet Norway viewpoint', 'Gudbrandsjuvet national tourist route']},
+      {route:'Geiranger-Trollstigen｜盖朗厄尔-精灵之路', name:'Trollstigen｜精灵之路观景台', lat:62.4548, lng:7.6636, time:'8/12 上午', stay:'45-75分钟', match:'本次核心停靠点', url:'https://www.nasjonaleturistveger.no/en/routes/geiranger-trollstigen/', note:'这段路线最关键的道路-山体-平台组合。建议把它当半个目的地，而不是路过拍一张。', query:['Trollstigen viewing platform daylight', 'Trollstigen Norway national tourist route']},
+
+      {route:'Lofoten｜罗弗敦国家观光公路', name:'Austnesfjorden｜奥斯特内斯峡湾', lat:68.3090, lng:14.6510, time:'8/13或8/17往返机场/东线时可看', stay:'20-30分钟', match:'本次可能顺路', url:'https://www.nasjonaleturistveger.no/en/routes/lofoten/', note:'罗弗敦东侧官方观景停靠点，木栈道和开阔水面适合短暂停留；如果你主要活动在Leknes以西，可作为机动备选。', query:['Austnesfjorden Lofoten viewpoint', 'Austnesfjorden national tourist route']},
+      {route:'Lofoten｜罗弗敦国家观光公路', name:'Gimsøystraumen｜吉姆瑟海峡', lat:68.2950, lng:14.1800, time:'北岸/东线天气窗口', stay:'15-25分钟', match:'顺路短停', url:'https://www.nasjonaleturistveger.no/en/routes/lofoten/', note:'桥、潮流和开阔海面构成的道路节点，适合判断北岸天气和光线。', query:['Gimsøystraumen Lofoten', 'Gimsoystraumen bridge Lofoten']},
+      {route:'Lofoten｜罗弗敦国家观光公路', name:'Eggum｜艾古姆', lat:68.3080, lng:13.6680, time:'8/14-8/16傍晚/夜间光线', stay:'1-2小时', match:'很适合你', url:'https://www.nasjonaleturistveger.no/en/routes/lofoten/', note:'北岸海景和午夜太阳方向很契合拍照/发呆，风大时无人机谨慎。', query:['Eggum Lofoten national tourist route', 'Eggum Lofoten beach landscape']},
+      {route:'Lofoten｜罗弗敦国家观光公路', name:'Rambergstranda｜拉姆贝格海滩', lat:68.0890, lng:13.2300, time:'西线大景观日', stay:'30-60分钟', match:'建议停', url:'https://www.nasjonaleturistveger.no/en/routes/lofoten/', note:'白沙滩和山体关系非常直接，适合不徒步也能获得高回报景观。', query:['Rambergstranda Lofoten beach daylight', 'Ramberg beach Lofoten mountains']},
+      {route:'Lofoten｜罗弗敦国家观光公路', name:'Reinehalsen｜雷讷观景点', lat:67.9460, lng:13.0880, time:'天气好且体力足的西线日', stay:'20-40分钟', match:'经典但较远', url:'https://www.nasjonaleturistveger.no/en/routes/lofoten/', note:'罗弗敦最经典的村庄-山海构图之一，但从Leknes往返较远，建议只在天气值得时去。', query:['Reinehalsen Lofoten viewpoint', 'Reine Lofoten classic view']},
+      {route:'Lofoten｜罗弗敦国家观光公路', name:'Akkarvikodden｜阿卡维克角', lat:67.9320, lng:13.0280, time:'若走到Moskenes/Reine一带', stay:'15-25分钟', match:'远端备选', url:'https://www.nasjonaleturistveger.no/en/routes/lofoten/', note:'西端路线的官方停靠点之一，适合和Reine/Hamnøy组合，不建议在天气一般时硬跑。', query:['Akkarvikodden Lofoten', 'Akkarvikodden national tourist route']},
+      {route:'Lofoten｜罗弗敦国家观光公路', name:'Grunnfør｜格伦弗尔', lat:68.3540, lng:14.5780, time:'东线/北线机动日', stay:'15-25分钟', match:'机动备选', url:'https://www.nasjonaleturistveger.no/en/routes/lofoten/', note:'更偏东/北的官方停靠点，适合你如果某天决定往Svolvær方向走时补入。', query:['Grunnfør Lofoten national tourist route', 'Grunnfor Lofoten']},
+      {route:'Lofoten｜罗弗敦国家观光公路', name:'Torvdalshalsen｜托尔夫达尔山口', lat:68.2360, lng:13.7600, time:'Leknes周边机动', stay:'10-20分钟', match:'近距离顺路', url:'https://www.nasjonaleturistveger.no/en/routes/lofoten/', note:'靠近你住宿与Leknes活动半径，适合作为天气窗口判断点。', query:['Torvdalshalsen Lofoten viewpoint', 'Torvdalshalsen national tourist route']}
+    ];
+
+    function marker(place) {
+      const base = baseName(place.name);
+      const official = officialLinks[base];
+      const wikiTitle = wikiTitles[base] || base.replaceAll(' ', '_');
+      const searchQueries = photoSearchQueries[base] || [base + ' Paris architecture'];
+      const safeId = btoa(unescape(encodeURIComponent(base))).replaceAll('=', '');
+      return L.circleMarker([place.lat, place.lng], {
+        radius: 8,
+        color: '#fff',
+        weight: 2,
+        fillColor: colors[place.type],
+        fillOpacity: 0.95
+      }).bindPopup(`
+        <div class="tag">${place.type}</div>
+        <div class="popup-title">${place.name}</div>
+        <ul class="meta">
+          <li><b>世界地位：</b>${place.world}</li>
+          <li><b>与你匹配：</b>${place.fit}</li>
+          <li><b>建议：</b>${place.decision}</li>
+          <li><b>开放：</b>${place.hours}</li>
+          <li><b>票价：</b>${place.price}</li>
+          <li><b>通票：</b>${place.pass}</li>
+          <li><b>最佳时段/活动：</b>${place.best}</li>
+        </ul>
+        <p>${place.note}</p>
+        <div class="photo-box" data-photo-id="${safeId}" data-wiki-title="${wikiTitle}" data-photo-queries="${encodeURIComponent(JSON.stringify(searchQueries))}">
+          <div class="loading">正在加载经典照片...</div>
+        </div>
+        <div class="links">
+          ${official ? `<a href="${official}" target="_blank">官网/准官网</a>` : ''}
+          <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(base + ' Paris')}" target="_blank">Google Maps</a>
+        </div>
+      `);
+    }
+
+    async function fetchCommonsSearchImages(queries) {
+      const images = [];
+      const badWords = /logo|icon|map|plan|svg|flag|seal|diagram|floor|locator|sign|plaque|poster|ticket|metro|stamp|coat|scan|document|drawing|model|maquette|blueprint|portrait|album/i;
+      for (let queryIndex = 0; queryIndex < queries.length; queryIndex++) {
+        const query = queries[queryIndex];
+        const searchUrl = `https://commons.wikimedia.org/w/api.php?origin=*&action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=8&gsrsearch=${encodeURIComponent(query)}&prop=imageinfo&iiprop=url|mime|size&iiurlwidth=1000`;
+        const info = await fetch(searchUrl).then(r => r.ok ? r.json() : null).catch(() => null);
+        const pages = info?.query?.pages ? Object.values(info.query.pages) : [];
+        const pickedForQuery = [];
+        pages
+          .filter(page => page.title && !badWords.test(page.title))
+          .filter(page => {
+            const image = page.imageinfo?.[0];
+            return image && /^image\//.test(image.mime || '') && image.width >= 500 && image.height >= 350;
+          })
+          .sort((a, b) => {
+            const ai = a.imageinfo?.[0] || {};
+            const bi = b.imageinfo?.[0] || {};
+            const aRatio = ai.width && ai.height ? ai.width / ai.height : 1;
+            const bRatio = bi.width && bi.height ? bi.width / bi.height : 1;
+            const aScore = (ai.width || 0) + (ai.height || 0) - Math.abs(aRatio - 1.5) * 300;
+            const bScore = (bi.width || 0) + (bi.height || 0) - Math.abs(bRatio - 1.5) * 300;
+            return bScore - aScore;
+          })
+          .forEach(page => {
+            const image = page.imageinfo[0];
+            const url = image.thumburl || image.url;
+            if (url && pickedForQuery.length < (queryIndex === 0 ? 2 : 1)) pickedForQuery.push(url);
+          });
+        images.push(...pickedForQuery);
+        if (images.length >= 5) break;
+      }
+      return [...new Set(images)].slice(0, 5);
+    }
+
+    async function fetchWikiImages(title, queries = []) {
+      const images = await fetchCommonsSearchImages(queries);
+      if (images.length) return images;
+
+      const fallback = [];
+      const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+      const summary = await fetch(summaryUrl).then(r => r.ok ? r.json() : null).catch(() => null);
+      if (summary?.thumbnail?.source) fallback.push(summary.thumbnail.source.replace(/\/\d+px-/, '/900px-'));
+
+      const imageListUrl = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&prop=images&imlimit=30&titles=${encodeURIComponent(title)}`;
+      const imageList = await fetch(imageListUrl).then(r => r.ok ? r.json() : null).catch(() => null);
+      const pages = imageList?.query?.pages ? Object.values(imageList.query.pages) : [];
+      const fileTitles = [];
+      pages.forEach(page => {
+        (page.images || []).forEach(img => {
+          const file = img.title || '';
+          if (!/\.(jpg|jpeg|png)$/i.test(file)) return;
+          if (/logo|icon|map|plan|svg|flag|seal|diagram|floor|locator/i.test(file)) return;
+          fileTitles.push(file);
+        });
+      });
+      if (fileTitles.length) {
+        const selected = fileTitles.slice(0, 8).join('|');
+        const infoUrl = `https://commons.wikimedia.org/w/api.php?origin=*&action=query&format=json&prop=imageinfo&iiprop=url&iiurlwidth=1000&titles=${encodeURIComponent(selected)}`;
+        const info = await fetch(infoUrl).then(r => r.ok ? r.json() : null).catch(() => null);
+        const imagePages = info?.query?.pages ? Object.values(info.query.pages) : [];
+        imagePages.forEach(page => {
+          const url = page.imageinfo?.[0]?.thumburl || page.imageinfo?.[0]?.url;
+          if (url) fallback.push(url);
+        });
+      }
+      return [...new Set(fallback)].slice(0, 5);
+    }
+
+    function renderCarousel(box, images) {
+      if (!images.length) {
+        box.innerHTML = '<div class="empty">暂时没有抓到可显示图片；文字和链接仍可使用。</div>';
+        return;
+      }
+      let index = 0;
+      const draw = () => {
+        box.innerHTML = `
+          <img src="${images[index]}" alt="景点照片" loading="lazy">
+          ${images.length > 1 ? '<button class="photo-btn prev" type="button">‹</button><button class="photo-btn next" type="button">›</button>' : ''}
+          <div class="photo-count">${index + 1}/${images.length}</div>
+        `;
+        const image = box.querySelector('img');
+        if (image) image.addEventListener('error', () => {
+          images.splice(index, 1);
+          if (!images.length) {
+            box.innerHTML = '<div class="empty">这组照片暂时无法显示；文字和链接仍可使用。</div>';
+            return;
+          }
+          index = index % images.length;
+          draw();
+        }, { once: true });
+        const prev = box.querySelector('.prev');
+        const next = box.querySelector('.next');
+        if (prev) prev.addEventListener('click', ev => {
+          ev.stopPropagation();
+          index = (index - 1 + images.length) % images.length;
+          draw();
+        });
+        if (next) next.addEventListener('click', ev => {
+          ev.stopPropagation();
+          index = (index + 1) % images.length;
+          draw();
+        });
+        box.onwheel = ev => {
+          if (Math.abs(ev.deltaX) + Math.abs(ev.deltaY) < 20 || images.length < 2) return;
+          ev.preventDefault();
+          index = ev.deltaY + ev.deltaX > 0 ? (index + 1) % images.length : (index - 1 + images.length) % images.length;
+          draw();
+        };
+      };
+      draw();
+    }
+
+    const photoCache = new Map();
+    map.on('popupopen', async (event) => {
+      const box = event.popup.getElement()?.querySelector('.photo-box');
+      if (!box) return;
+      const title = box.dataset.wikiTitle;
+      const queries = JSON.parse(decodeURIComponent(box.dataset.photoQueries || '%5B%5D'));
+      const cacheKey = `${title}:${queries.join('|')}`;
+      if (!photoCache.has(cacheKey)) {
+        photoCache.set(cacheKey, fetchWikiImages(title, queries).catch(() => []));
+      }
+      const images = await photoCache.get(cacheKey);
+      renderCarousel(box, images);
+    });
+
+    function tripMarker(place) {
+      return L.circleMarker([place.lat, place.lng], {
+        radius: 7,
+        color: '#fff',
+        weight: 2,
+        fillColor: colors[place.type] || '#555',
+        fillOpacity: 0.95
+      }).bindPopup(`
+        <div class="tag">${place.type}</div>
+        <div class="popup-title">${place.name}</div>
+        <ul class="meta">
+          <li><b>预计时间：</b>${place.time}</li>
+          <li><b>建议停留：</b>${place.stay}</li>
+        </ul>
+        <p>${place.note}</p>
+        <div class="links">
+          <a href="https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}" target="_blank">Google Maps</a>
+        </div>
+      `);
+    }
+
+    function officialStopMarker(stop) {
+      const base = baseName(stop.name);
+      const safeId = btoa(unescape(encodeURIComponent(`${stop.route}-${base}`))).replaceAll('=', '');
+      const queries = stop.query || [`${base} ${baseName(stop.route)} Norway`];
+      return L.circleMarker([stop.lat, stop.lng], {
+        radius: 6,
+        color: '#fff',
+        weight: 2,
+        fillColor: officialStopColor,
+        fillOpacity: 0.96
+      }).bindPopup(`
+        <div class="tag">official stop / 国家观光公路</div>
+        <div class="popup-title">${stop.name}</div>
+        <ul class="meta">
+          <li><b>所属路线：</b>${stop.route}</li>
+          <li><b>预计时段：</b>${stop.time}</li>
+          <li><b>建议停留：</b>${stop.stay}</li>
+          <li><b>与本次行程：</b>${stop.match}</li>
+        </ul>
+        <p>${stop.note}</p>
+        <div class="photo-box" data-photo-id="${safeId}" data-wiki-title="${base.replaceAll(' ', '_')}" data-photo-queries="${encodeURIComponent(JSON.stringify(queries))}">
+          <div class="loading">正在加载该停靠点照片...</div>
+        </div>
+        <div class="links">
+          <a href="${stop.url}" target="_blank">官方路线页面</a>
+          <a href="https://www.google.com/maps/search/?api=1&query=${stop.lat},${stop.lng}" target="_blank">Google Maps</a>
+        </div>
+      `);
+    }
+
+    function shopMarker(store) {
+      return L.circleMarker([store.lat, store.lng], {
+        radius: 8,
+        color: '#fff',
+        weight: 2,
+        fillColor: colors.shop,
+        fillOpacity: 0.95
+      }).bindPopup(`
+        <div class="tag">shop / iPad备选</div>
+        <div class="popup-title">${store.name}</div>
+        <ul class="meta">
+          <li><b>顺位：</b>${store.rank}</li>
+          <li><b>地址/位置：</b>${store.address}</li>
+          <li><b>营业时间：</b>${store.hours}</li>
+          <li><b>检索关键词：</b>${store.target}</li>
+          <li><b>当前记录：</b>${store.snapshot}</li>
+          <li><b>退税：</b>${store.tax}</li>
+          <li><b>操作建议：</b>${store.strategy}</li>
+        </ul>
+        <div class="links">
+          <a href="${store.official}" target="_blank">官网</a>
+          <a href="${store.storeUrl}" target="_blank">店铺页</a>
+          <a href="${store.stockUrl}" target="_blank">刷新库存/商品页</a>
+          <a href="${store.searchUrl}" target="_blank">按关键词检索</a>
+          <a href="${store.mapsUrl}" target="_blank">Google Maps</a>
+        </div>
+      `);
+    }
+
+    function lodgingMarker(stop) {
+      const bedSvg = `
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3.5 13.5h17"></path>
+          <path d="M5 9h5.8c1 0 1.8.8 1.8 1.8v2.7H5z"></path>
+          <path d="M12.6 11h5.2c1.5 0 2.7 1.2 2.7 2.7V18H3.5v-8"></path>
+          <path d="M5.5 18v2"></path>
+          <path d="M18.5 18v2"></path>
+        </svg>`;
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="lodging-icon">${bedSvg}<span class="nights-badge">${stop.nights}</span></div>`,
+        iconSize: [36, 36],
+        iconAnchor: [14, 28],
+        popupAnchor: [0, -28]
+      });
+      return L.marker([stop.lat, stop.lng], {icon, zIndexOffset: 600}).bindPopup(`
+        <div class="tag">lodging / 住宿</div>
+        <div class="popup-title">${stop.name}</div>
+        <ul class="meta">
+          <li><b>日期：</b>${stop.dates}</li>
+          <li><b>晚数：</b>${stop.nights}晚</li>
+        </ul>
+        <p>${stop.note}</p>
+        <div class="links">
+          <a href="https://www.google.com/maps/search/?api=1&query=${stop.lat},${stop.lng}" target="_blank">Google Maps</a>
+        </div>
+      `);
+    }
+
+    function supplyMarker(stop) {
+      const detail = supplyDetails[stop.name] || {};
+      const isFuel = stop.kind === 'fuel';
+      const markerLat = detail.lat || stop.lat;
+      const markerLng = detail.lng || stop.lng;
+      const displayName = detail.realName || stop.name;
+      const svg = isFuel ? `
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 20V5.8c0-.8.6-1.4 1.4-1.4h5.2c.8 0 1.4.6 1.4 1.4V20"></path>
+          <path d="M6 20h10"></path>
+          <path d="M9 8h4"></path>
+          <path d="M15 8l3 3v5.5c0 .8.6 1.5 1.4 1.5s1.4-.7 1.4-1.5V12"></path>
+        </svg>` : `
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 8h14l-1.7 8.5H8.2z"></path>
+          <path d="M6 8L4.8 5H3"></path>
+          <path d="M9 8l3-4"></path>
+          <path d="M17 8l-3-4"></path>
+          <circle cx="9" cy="20" r="1"></circle>
+          <circle cx="17" cy="20" r="1"></circle>
+        </svg>`;
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="supply-icon ${isFuel ? 'fuel' : 'grocery'}">${svg}</div>`,
+        iconSize: [28, 28],
+        iconAnchor: [12, 12],
+        popupAnchor: [0, -12]
+      });
+      const encodedQuery = encodeURIComponent(`${displayName} ${markerLat},${markerLng}`);
+      const website = detail.website ? `<a href="${detail.website}" target="_blank">官网/品牌页</a>` : '';
+      return L.marker([markerLat, markerLng], {icon, zIndexOffset: 300}).bindPopup(`
+        <div class="tag">${isFuel ? 'fuel / 加油候选' : 'grocery / 采购候选'}</div>
+        <div class="popup-title">${displayName}</div>
+        <ul class="meta">
+          <li><b>原计划节点：</b>${stop.name}</li>
+          <li><b>适合时段：</b>${stop.stage}</li>
+          <li><b>预计到达：</b>${detail.arrival || '按行程实时判断'}</li>
+          <li><b>营业时间：</b>${detail.opening || '公开地图数据未给出；当天必须复核'}</li>
+          <li><b>冲突判断：</b>${detail.conflict || '未能自动判断，按当天Google Maps/官网为准。'}</li>
+          <li><b>为什么标这里：</b>${stop.why}</li>
+        </ul>
+        <p class="small">${detail.confidence || '这些点用于驾驶决策，营业时间、停车便利度和是否绕路请当天点开地图复核。'}</p>
+        <div class="links">
+          ${website}
+          <a href="https://www.google.com/maps/search/?api=1&query=${encodedQuery}" target="_blank">Google Maps 搜索</a>
+          <a href="https://www.google.com/maps/dir/?api=1&destination=${markerLat},${markerLng}" target="_blank">导航到这里</a>
+        </div>
+      `);
+    }
+
+    const hubById = new Map(transportHubs.map(hub => [hub.id, hub]));
+
+    function iconSvg(kind) {
+      const svgs = {
+        airport: `
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path style="fill:#fff;stroke:none" d="M12 2.2c.7 0 1.15.48 1.15 1.25v6.1l6.45 4.05c.35.22.55.58.55 1v1.75l-7-2.05v4.2l2.35 1.55v1.35L12 20.35 8.5 21.4v-1.35l2.35-1.55v-4.2l-7 2.05V14.6c0-.42.2-.78.55-1l6.45-4.05v-6.1c0-.77.45-1.25 1.15-1.25z"></path>
+          </svg>`,
+        station: `
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 4h12a2 2 0 0 1 2 2v9a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V6a2 2 0 0 1 2-2z"></path>
+            <path d="M8 8h8"></path>
+            <path d="M8 13h.01"></path>
+            <path d="M16 13h.01"></path>
+            <path d="m8 20 2-2"></path>
+            <path d="m16 20-2-2"></path>
+          </svg>`,
+        flight: `
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path style="fill:#fff;stroke:none" d="M12 2.2c.7 0 1.15.48 1.15 1.25v6.1l6.45 4.05c.35.22.55.58.55 1v1.75l-7-2.05v4.2l2.35 1.55v1.35L12 20.35 8.5 21.4v-1.35l2.35-1.55v-4.2l-7 2.05V14.6c0-.42.2-.78.55-1l6.45-4.05v-6.1c0-.77.45-1.25 1.15-1.25z"></path>
+          </svg>`,
+        rail: `
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6.5 3.8h11c1 0 1.8.8 1.8 1.8V14c0 1.6-1.3 2.8-2.8 2.8h-9c-1.6 0-2.8-1.3-2.8-2.8V5.6c0-1 .8-1.8 1.8-1.8z"></path>
+            <path d="M7.5 8h9"></path>
+            <path d="M7.5 11.8h9"></path>
+            <circle cx="8.5" cy="14.2" r=".7"></circle>
+            <circle cx="15.5" cy="14.2" r=".7"></circle>
+            <path d="m8.3 19 2-2.2"></path>
+            <path d="m15.7 19-2-2.2"></path>
+            <path d="M5.8 20.2h4.6"></path>
+            <path d="M13.6 20.2h4.6"></path>
+          </svg>`,
+        ground: `
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 11h14l-1.2-3.6A2 2 0 0 0 15.9 6H8.1a2 2 0 0 0-1.9 1.4z"></path>
+            <path d="M6 15h12"></path>
+            <circle cx="7.5" cy="17" r="1.5"></circle>
+            <circle cx="16.5" cy="17" r="1.5"></circle>
+          </svg>`,
+        rental: `
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 12h14l-1.3-4A2 2 0 0 0 15.8 6H8.2a2 2 0 0 0-1.9 2z"></path>
+            <path d="M6 15h12"></path>
+            <path d="M7 18h10"></path>
+            <circle cx="7.5" cy="17" r="1.5"></circle>
+            <circle cx="16.5" cy="17" r="1.5"></circle>
+          </svg>`
+      };
+      return svgs[kind] || svgs.ground;
+    }
+
+    function transportHubMarker(hub) {
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="transport-icon ${hub.kind}">${iconSvg(hub.kind)}</div>`,
+        iconSize: [34, 34],
+        iconAnchor: [15, 15],
+        popupAnchor: [0, -16]
+      });
+      return L.marker([hub.lat, hub.lng], {icon, zIndexOffset: 520})
+        .bindTooltip(hub.code, {permanent: true, direction: 'top', offset: [0, -12], className: 'transport-label'})
+        .bindPopup(`
+          <div class="tag">${hub.kind === 'airport' ? 'airport / 机场' : 'rail station / 火车站'}</div>
+          <div class="popup-title">${hub.name}</div>
+          <ul class="meta">
+            <li><b>代码/简称：</b>${hub.code}</li>
+            <li><b>航站楼/站台：</b>${hub.terminal}</li>
+            <li><b>行程角色：</b>${hub.role}</li>
+          </ul>
+          <p>${hub.note}</p>
+          <div class="links">
+            <a href="${hub.official}" target="_blank">机场/车站官网</a>
+            <a href="${hub.maps}" target="_blank">Google Maps</a>
+          </div>
+          <p class="small">航站楼和站台会随航司/当日运行调整；最终以值机、车票和机场/车站大屏为准。</p>
+        `);
+    }
+
+    function endpointPoint(connection, side) {
+      const hubId = connection[side];
+      const coord = connection[`${side}Coord`];
+      if (coord) return coord;
+      const hub = hubById.get(hubId);
+      return hub ? [hub.lat, hub.lng] : null;
+    }
+
+    function endpointName(connection, side) {
+      const hubId = connection[side];
+      const named = connection[`${side}Name`];
+      if (named) return named;
+      const hub = hubById.get(hubId);
+      return hub ? `${hub.name} (${hub.code})` : hubId;
+    }
+
+    function curveBetween(a, b, bend = 0.24, steps = 80) {
+      const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      const dx = b[1] - a[1];
+      const dy = b[0] - a[0];
+      const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+      const control = [
+        mid[0] - (dx / distance) * distance * bend,
+        mid[1] + (dy / distance) * distance * bend
+      ];
+      const pts = [];
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const one = 1 - t;
+        pts.push([
+          one * one * a[0] + 2 * one * t * control[0] + t * t * b[0],
+          one * one * a[1] + 2 * one * t * control[1] + t * t * b[1]
+        ]);
+      }
+      return pts;
+    }
+
+    function pointDistanceKm(a, b) {
+      const dx = (b[1] - a[1]) * Math.cos(toRad((a[0] + b[0]) / 2));
+      const dy = b[0] - a[0];
+      return Math.sqrt(dx * dx + dy * dy) * 111.32;
+    }
+
+    function lineMidPoint(points) {
+      if (!points.length) return null;
+      if (points.length === 1) return points[0];
+      let total = 0;
+      for (let i = 0; i < points.length - 1; i++) total += pointDistanceKm(points[i], points[i + 1]);
+      const target = total / 2;
+      let walked = 0;
+      for (let i = 0; i < points.length - 1; i++) {
+        const seg = pointDistanceKm(points[i], points[i + 1]);
+        if (walked + seg >= target) {
+          const t = seg ? (target - walked) / seg : 0;
+          return [
+            points[i][0] + (points[i + 1][0] - points[i][0]) * t,
+            points[i][1] + (points[i + 1][1] - points[i][1]) * t
+          ];
+        }
+        walked += seg;
+      }
+      return points[points.length - 1];
+    }
+
+    function routeBadge(type, label = '') {
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="route-badge ${type}">${iconSvg(type)}</div>`,
+        iconSize: [29, 29],
+        iconAnchor: [14, 14],
+        popupAnchor: [0, -13]
+      });
+      return icon;
+    }
+
+    function transportConnectionPopup(connection, from, to) {
+      return `
+        <div class="tag">${connection.type} / ${connection.type === 'flight' ? '航班' : connection.type === 'rail' ? '火车' : connection.type === 'rental' ? '租车' : '短驳'}</div>
+        <div class="popup-title">${connection.code}｜${connection.name}</div>
+        <ul class="meta">
+          <li><b>起点：</b>${endpointName(connection, 'from')}</li>
+          <li><b>终点：</b>${endpointName(connection, 'to')}</li>
+          <li><b>出发：</b>${connection.depart}</li>
+          <li><b>抵达/结束：</b>${connection.arrive}</li>
+          <li><b>航站楼/站台：</b>${connection.terminal}</li>
+          <li><b>行李：</b>${connection.luggage}</li>
+          <li><b>衔接余量：</b>${connection.layover}</li>
+        </ul>
+        <p>${connection.note}</p>
+        <div class="links">
+          <a href="https://www.google.com/maps/dir/?api=1&origin=${from[0]},${from[1]}&destination=${to[0]},${to[1]}" target="_blank">Google Maps 路线</a>
+        </div>
+      `;
+    }
+
+    function addTransportConnection(connection) {
+      const from = endpointPoint(connection, 'from');
+      const to = endpointPoint(connection, 'to');
+      if (!from || !to) return null;
+      const isFlight = connection.type === 'flight';
+      const pts = isFlight ? curveBetween(from, to, Math.abs(to[1] - from[1]) > 30 ? 0.14 : 0.24) : [from, to];
+      const color = transportColors[connection.type] || transportColors.ground;
+      const dashArray = connection.type === 'flight' ? null : connection.type === 'rental' ? '12 7' : '7 7';
+      const line = L.polyline(pts, {
+        color,
+        weight: isFlight ? 3.5 : 4,
+        opacity: isFlight ? 0.72 : 0.78,
+        dashArray
+      }).bindPopup(transportConnectionPopup(connection, from, to)).addTo(map);
+      const badge = L.marker(lineMidPoint(pts), {icon: routeBadge(connection.type), zIndexOffset: 480})
+        .bindPopup(transportConnectionPopup(connection, from, to))
+        .addTo(map);
+      return L.featureGroup([line, badge]);
+    }
+
+    function toRad(deg) { return deg * Math.PI / 180; }
+    function toDeg(rad) { return rad * 180 / Math.PI; }
+    function normalize(deg) { return (deg % 360 + 360) % 360; }
+    function bearingBetween(a, b) {
+      const lat1 = toRad(a[0]), lat2 = toRad(b[0]);
+      const dLon = toRad(b[1] - a[1]);
+      const y = Math.sin(dLon) * Math.cos(lat2);
+      const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+      return normalize(toDeg(Math.atan2(y, x)));
+    }
+    function angleDiff(a, b) {
+      const diff = Math.abs(normalize(a - b));
+      return diff > 180 ? 360 - diff : diff;
+    }
+    function formatDuration(seconds) {
+      if (!seconds && seconds !== 0) return '未返回';
+      const minutes = Math.round(seconds / 60);
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return h ? `${h}小时${m ? ` ${m}分钟` : ''}` : `${m}分钟`;
+    }
+    function formatDistance(meters) {
+      if (!meters && meters !== 0) return '未返回';
+      return `${Math.round(meters / 1000)}公里`;
+    }
+    function nearestRouteBearing(points, latlng) {
+      let best = {distance: Infinity, bearing: bearingBetween(points[0], points[points.length - 1])};
+      const p = [latlng.lat, latlng.lng];
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i], b = points[i + 1];
+        const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+        const dx = (p[1] - mid[1]) * Math.cos(toRad(p[0]));
+        const dy = p[0] - mid[0];
+        const dist = dx * dx + dy * dy;
+        if (dist < best.distance) best = {distance: dist, bearing: bearingBetween(a, b)};
+      }
+      return best.bearing;
+    }
+    function solarAzimuth(lat, lon, date) {
+      const dayMs = 86400000;
+      const J1970 = 2440588;
+      const J2000 = 2451545;
+      const rad = Math.PI / 180;
+      const lw = -lon * rad;
+      const phi = lat * rad;
+      const d = date.valueOf() / dayMs - 0.5 + J1970 - J2000;
+      const M = rad * (357.5291 + 0.98560028 * d);
+      const C = rad * (1.9148 * Math.sin(M) + 0.0200 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M));
+      const P = rad * 102.9372;
+      const L = M + C + P + Math.PI;
+      const dec = Math.asin(Math.sin(L) * Math.sin(rad * 23.4397));
+      const ra = Math.atan2(Math.sin(L) * Math.cos(rad * 23.4397), Math.cos(L));
+      const sidereal = rad * (280.16 + 360.9856235 * d) - lw;
+      const H = sidereal - ra;
+      const az = Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(phi) - Math.tan(dec) * Math.cos(phi));
+      return normalize(toDeg(az) + 180);
+    }
+    function destinationPoint(origin, bearingDeg, distanceKm) {
+      const R = 6371;
+      const brng = toRad(bearingDeg);
+      const lat1 = toRad(origin[0]);
+      const lon1 = toRad(origin[1]);
+      const d = distanceKm / R;
+      const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(brng));
+      const lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2));
+      return [toDeg(lat2), toDeg(lon2)];
+    }
+    function sectorPolygon(center, azimuth, radiusKm, widthDeg = 34) {
+      const pts = [center];
+      for (let a = azimuth - widthDeg / 2; a <= azimuth + widthDeg / 2; a += 4) {
+        pts.push(destinationPoint(center, a, radiusKm));
+      }
+      pts.push(center);
+      return pts;
+    }
+
+    const routingStatus = document.getElementById('routingStatus');
+    let routeRequests = 0;
+    let routeSuccess = 0;
+    let routeFallback = 0;
+    function updateRoutingStatus() {
+      if (!routingStatus) return;
+      routingStatus.textContent = `道路路线：已生成 ${routeSuccess}/${routeRequests} 段导航级路线，${routeFallback} 段使用备份折线。`;
+    }
+    async function routeOnRoad(points) {
+      routeRequests += 1;
+      updateRoutingStatus();
+      const coords = points.map(p => `${p[1]},${p[0]}`).join(';');
+      const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&alternatives=false&steps=false`;
+      try {
+        const data = await fetch(url).then(r => r.ok ? r.json() : Promise.reject(new Error('route failed')));
+        const geometry = data?.routes?.[0]?.geometry?.coordinates;
+        if (!geometry || !geometry.length) throw new Error('empty route');
+        routeSuccess += 1;
+        updateRoutingStatus();
+        return {
+          points: geometry.map(c => [c[1], c[0]]),
+          duration: data.routes[0].duration,
+          distance: data.routes[0].distance
+        };
+      } catch (error) {
+        routeFallback += 1;
+        updateRoutingStatus();
+        return {points, duration: null, distance: null};
+      }
+    }
+
+    let sunLayer;
+    let sunTooltip;
+    async function addDriveSegment(segment) {
+      const routed = await routeOnRoad(segment.points);
+      const routedPoints = routed.points;
+      const line = L.polyline(routedPoints, {
+        color: segment.color,
+        weight: 5,
+        opacity: 0.9
+      }).bindPopup(() => {
+        const mid = routedPoints[Math.floor(routedPoints.length / 2)];
+        const driveBearing = bearingBetween(routedPoints[0], routedPoints[routedPoints.length - 1]);
+        const sunAz = solarAzimuth(mid[0], mid[1], new Date(segment.date));
+        const diff = angleDiff(driveBearing, sunAz);
+        return `
+          <div class="tag">drive</div>
+          <div class="popup-title">${segment.name}</div>
+          <ul class="meta">
+            <li><b>预计时段：</b>${segment.date.replace('T', ' ').slice(0, 16)}</li>
+            <li><b>OSRM行车耗时：</b>${formatDuration(routed.duration)}</li>
+            <li><b>OSRM路线距离：</b>${formatDistance(routed.distance)}</li>
+            <li><b>人工预留：</b>${segment.duration}</li>
+            <li><b>行车方向：</b>${segment.bearing}</li>
+            <li><b>太阳方位：</b>${Math.round(sunAz)}°，与驾驶方向夹角约 ${Math.round(diff)}°</li>
+          </ul>
+          <p>${segment.note}</p>
+        `;
+      }).addTo(map);
+      const updateSun = (ev) => {
+        const center = [ev.latlng.lat, ev.latlng.lng];
+        const sunAz = solarAzimuth(center[0], center[1], new Date(segment.date));
+        const driveBearing = nearestRouteBearing(routedPoints, ev.latlng);
+        const diff = angleDiff(driveBearing, sunAz);
+        const radius = map.getZoom() >= 9 ? 4 : map.getZoom() >= 6 ? 10 : 35;
+        if (sunLayer) map.removeLayer(sunLayer);
+        sunLayer = L.polygon(sectorPolygon(center, sunAz, radius), {
+          color: '#f5c542',
+          weight: 1,
+          fillColor: '#ffe08a',
+          fillOpacity: 0.28,
+          interactive: false
+        }).addTo(map);
+        if (!sunTooltip) {
+          sunTooltip = L.tooltip({permanent: false, direction: 'top', className: 'sun-tooltip'});
+        }
+        sunTooltip
+          .setLatLng(ev.latlng)
+          .setContent(`太阳${Math.round(sunAz)}° / 路线${Math.round(driveBearing)}° / 夹角${Math.round(diff)}°`)
+          .addTo(map);
+      };
+      const clearSun = () => {
+        if (sunLayer) {
+          map.removeLayer(sunLayer);
+          sunLayer = null;
+        }
+        if (sunTooltip) {
+          map.removeLayer(sunTooltip);
+          sunTooltip = null;
+        }
+      };
+      line.on('mouseover', updateSun);
+      line.on('mousemove', updateSun);
+      hitLine.on('mouseover', updateSun);
+      hitLine.on('mousemove', updateSun);
+      line.on('mouseout', clearSun);
+      hitLine.on('mouseout', clearSun);
+      return line;
+    }
+
+    const routeSelectionPanel = document.getElementById('routeSelectionSummary');
+    const toggleRouteSelectionButton = document.getElementById('toggleRouteSelection');
+    const clearRouteSelectionButton = document.getElementById('clearRouteSelection');
+    const selectedDetailedSegments = new Set();
+    const detailedSegmentState = new Map();
+    let routeSelectionMode = false;
+
+    function formatClock(date) {
+      if (!date) return '未估算';
+      return date.toLocaleString('zh-CN', {
+        timeZone: 'Europe/Paris',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).replace(/\//g, '.');
+    }
+    function minutesText(minutes) {
+      if (!minutes && minutes !== 0) return '未估算';
+      const rounded = Math.round(minutes);
+      const h = Math.floor(rounded / 60);
+      const m = rounded % 60;
+      return h ? `${h}小时${m ? `${m}分钟` : ''}` : `${m}分钟`;
+    }
+    function addMinutes(date, minutes) {
+      return new Date(date.getTime() + minutes * 60000);
+    }
+    function computeDetailedSchedule() {
+      let current = null;
+      [...detailedSegmentState.values()]
+        .sort((a, b) => a.segment.seq - b.segment.seq)
+        .forEach(state => {
+          const segment = state.segment;
+          if (segment.startTime) current = new Date(segment.startTime);
+          if (!current) current = new Date('2026-08-10T14:30:00+02:00');
+          const driveMin = state.routed.duration ? Math.round(state.routed.duration / 60) : segment.plannedMinutes;
+          state.driveMinutes = driveMin;
+          state.start = new Date(current);
+          state.end = addMinutes(state.start, driveMin);
+          current = addMinutes(state.end, segment.dwellAtEndMin || 0);
+        });
+    }
+    function styleDetailedSegment(state) {
+      const isSelected = selectedDetailedSegments.has(state.segment.seq);
+      state.line.setStyle({
+        weight: isSelected ? 9 : 5,
+        opacity: isSelected ? 1 : 0.88,
+        color: isSelected ? '#f5c542' : state.color
+      });
+      if (state.line.bringToFront) state.line.bringToFront();
+      if (state.hitLine?.bringToFront) state.hitLine.bringToFront();
+    }
+    function updateSelectionPanel(message = '') {
+      if (!routeSelectionPanel) return;
+      [...detailedSegmentState.values()].forEach(styleDetailedSegment);
+      if (!selectedDetailedSegments.size) {
+        routeSelectionPanel.innerHTML = `${routeSelectionMode ? '已进入选择模式：轻点相邻路段或租车图标组成连续区间。' : '手机上点“选择路段”后，再轻点彩色自驾小段或租车图标；电脑上也可长按路线进入连续多选。'}${message ? `<br>${message}` : ''}`;
+        return;
+      }
+      const seqs = [...selectedDetailedSegments].sort((a, b) => a - b);
+      const states = seqs.map(seq => detailedSegmentState.get(seq)).filter(Boolean);
+      const driveMin = states.reduce((sum, state) => sum + (state.driveMinutes || 0), 0);
+      const dwellMin = states.slice(0, -1).reduce((sum, state) => sum + (state.segment.dwellAtEndMin || 0), 0);
+      const first = states[0];
+      const last = states[states.length - 1];
+      const endWithStops = addMinutes(last.end, last.segment.dwellAtEndMin || 0);
+      const range = seqs.length === 1 ? `#${seqs[0]}` : `#${seqs[0]}-${seqs[seqs.length - 1]}`;
+      routeSelectionPanel.innerHTML = `
+        <b>已选自驾段 ${range}</b><br>
+        ${first.segment.from} → ${last.segment.to}<br>
+        预计：${formatClock(first.start)} 出发，${formatClock(last.end)} 抵达<br>
+        行车合计：${minutesText(driveMin)}；中间停留：${minutesText(dwellMin)}<br>
+        含最后停留后约：${formatClock(endWithStops)}<br>
+        <span class="small">只允许连续选择；点不相邻路段会重置选择。</span>
+      `;
+    }
+    function setRouteSelectionMode(enabled, message = '') {
+      routeSelectionMode = enabled;
+      if (toggleRouteSelectionButton) toggleRouteSelectionButton.textContent = enabled ? '退出选择' : '选择路段';
+      updateSelectionPanel(message);
+    }
+    function selectSingleDetailedSegment(seq, message = '') {
+      routeSelectionMode = true;
+      selectedDetailedSegments.clear();
+      selectedDetailedSegments.add(seq);
+      if (toggleRouteSelectionButton) toggleRouteSelectionButton.textContent = '退出选择';
+      map.closePopup();
+      updateSelectionPanel(message || '已进入选择模式。继续轻点相邻路段即可扩展区间。');
+    }
+    function toggleDetailedSelection(seq) {
+      const selected = [...selectedDetailedSegments].sort((a, b) => a - b);
+      if (!selected.length) {
+        selectedDetailedSegments.add(seq);
+      } else {
+        const min = selected[0];
+        const max = selected[selected.length - 1];
+        if (selectedDetailedSegments.has(seq)) {
+          if (seq === min || seq === max) selectedDetailedSegments.delete(seq);
+        } else if (seq === min - 1 || seq === max + 1) {
+          selectedDetailedSegments.add(seq);
+        } else {
+          selectedDetailedSegments.clear();
+          selectedDetailedSegments.add(seq);
+          updateSelectionPanel('你点了不相邻路段，我已把选择重置到这一段。');
+          return;
+        }
+      }
+      updateSelectionPanel();
+    }
+    if (toggleRouteSelectionButton) {
+      toggleRouteSelectionButton.addEventListener('click', () => {
+        if (routeSelectionMode) {
+          selectedDetailedSegments.clear();
+          setRouteSelectionMode(false, '已退出选择模式。');
+        } else {
+          setRouteSelectionMode(true, '已进入选择模式。现在轻点路段或路段上的租车图标即可选择。');
+        }
+      });
+    }
+    if (clearRouteSelectionButton) {
+      clearRouteSelectionButton.addEventListener('click', () => {
+        selectedDetailedSegments.clear();
+        setRouteSelectionMode(false, '已清除。');
+      });
+    }
+
+    async function addDetailedDriveSegment(segment, index) {
+      const routed = await routeOnRoad(segment.points);
+      const routedPoints = routed.points;
+      const color = segmentColors[index % segmentColors.length];
+      const line = L.polyline(routedPoints, {
+        color,
+        weight: 5,
+        opacity: 0.88
+      }).bindTooltip(String(segment.seq), {
+        permanent: true,
+        direction: 'center',
+        className: 'segment-label'
+      }).bindPopup(() => {
+        const state = detailedSegmentState.get(segment.seq);
+        const mid = routedPoints[Math.floor(routedPoints.length / 2)];
+        const driveBearing = nearestRouteBearing(routedPoints, {lat: mid[0], lng: mid[1]});
+        const sunAz = solarAzimuth(mid[0], mid[1], state?.start || new Date(segment.startTime || '2026-08-10T14:30:00+02:00'));
+        const diff = angleDiff(driveBearing, sunAz);
+        return `
+          <div class="tag">drive segment #${segment.seq}</div>
+          <div class="popup-title">${segment.day}｜${segment.name}</div>
+          <ul class="meta">
+            <li><b>起点：</b>${segment.from}</li>
+            <li><b>终点：</b>${segment.to}</li>
+            <li><b>预计出发：</b>${formatClock(state?.start)}</li>
+            <li><b>预计抵达：</b>${formatClock(state?.end)}</li>
+            <li><b>OSRM行车：</b>${formatDuration(routed.duration)}；${formatDistance(routed.distance)}</li>
+            <li><b>停留预留：</b>${minutesText(segment.dwellAtEndMin || 0)}</li>
+            <li><b>太阳/行车夹角：</b>约 ${Math.round(diff)}°</li>
+          </ul>
+          <p>${segment.note}</p>
+          <p class="small">手机上可先点底部“选择路段”，再轻点这条路线；电脑上也可长按路线进入连续多选。</p>
+        `;
+      }).addTo(map);
+
+      const hitLine = L.polyline(routedPoints, {
+        color: '#000',
+        weight: 24,
+        opacity: 0.01,
+        interactive: true
+      }).addTo(map);
+
+      const state = {segment, routed, line, hitLine, color, driveMinutes: segment.plannedMinutes, start: null, end: null};
+      detailedSegmentState.set(segment.seq, state);
+
+      const routeMarker = L.marker(lineMidPoint(routedPoints), {
+        icon: routeBadge('rental'),
+        zIndexOffset: 430
+      }).bindPopup(`
+        <div class="tag">rental drive / 租车自驾</div>
+        <div class="popup-title">自驾段 #${segment.seq}｜${segment.name}</div>
+        <ul class="meta">
+          <li><b>起点：</b>${segment.from}</li>
+          <li><b>终点：</b>${segment.to}</li>
+          <li><b>预计：</b>${formatDuration(routed.duration)}；${formatDistance(routed.distance)}</li>
+        </ul>
+        <p>${segment.note}</p>
+      `).addTo(map);
+
+      function handleDetailedSegmentTap(ev) {
+        if (longPressTimer) window.clearTimeout(longPressTimer);
+        if (routeSelectionMode || longPressed) {
+          L.DomEvent.stop(ev);
+          if (!longPressed) toggleDetailedSelection(segment.seq);
+          longPressed = false;
+          return true;
+        }
+        return false;
+      }
+      function startDetailedLongPress() {
+        longPressed = false;
+        longPressTimer = window.setTimeout(() => {
+          longPressed = true;
+          selectSingleDetailedSegment(segment.seq, '已进入选择模式。继续轻点相邻路段即可扩展区间。');
+        }, 550);
+      }
+      function clearDetailedLongPress() {
+        if (longPressTimer) window.clearTimeout(longPressTimer);
+      }
+
+      let longPressTimer = null;
+      let longPressed = false;
+      line.on('mousedown touchstart', startDetailedLongPress);
+      hitLine.on('mousedown touchstart', startDetailedLongPress);
+      line.on('mouseup mouseout touchend touchcancel', clearDetailedLongPress);
+      hitLine.on('mouseup mouseout touchend touchcancel', clearDetailedLongPress);
+      line.on('contextmenu', (ev) => L.DomEvent.stop(ev));
+      hitLine.on('contextmenu', (ev) => L.DomEvent.stop(ev));
+      line.on('click', (ev) => {
+        if (!handleDetailedSegmentTap(ev) && !routeSelectionMode) updateSun(ev);
+      });
+      hitLine.on('click', (ev) => {
+        if (!handleDetailedSegmentTap(ev) && !routeSelectionMode) {
+          updateSun(ev);
+          line.openPopup(ev.latlng);
+        }
+      });
+      routeMarker.on('click', (ev) => {
+        if (routeSelectionMode) {
+          L.DomEvent.stop(ev);
+          toggleDetailedSelection(segment.seq);
+        }
+      });
+
+      const updateSun = (ev) => {
+        const stateNow = detailedSegmentState.get(segment.seq);
+        const center = [ev.latlng.lat, ev.latlng.lng];
+        const sunAz = solarAzimuth(center[0], center[1], stateNow?.start || new Date(segment.startTime || '2026-08-10T14:30:00+02:00'));
+        const driveBearing = nearestRouteBearing(routedPoints, ev.latlng);
+        const diff = angleDiff(driveBearing, sunAz);
+        const radius = map.getZoom() >= 9 ? 4 : map.getZoom() >= 6 ? 10 : 35;
+        if (sunLayer) map.removeLayer(sunLayer);
+        sunLayer = L.polygon(sectorPolygon(center, sunAz, radius), {
+          color: '#f5c542',
+          weight: 1,
+          fillColor: '#ffe08a',
+          fillOpacity: 0.28,
+          interactive: false
+        }).addTo(map);
+        if (!sunTooltip) sunTooltip = L.tooltip({permanent: false, direction: 'top', className: 'sun-tooltip'});
+        sunTooltip
+          .setLatLng(ev.latlng)
+          .setContent(`#${segment.seq} 太阳${Math.round(sunAz)}° / 路线${Math.round(driveBearing)}° / 夹角${Math.round(diff)}°`)
+          .addTo(map);
+      };
+      const clearSun = () => {
+        if (sunLayer) {
+          map.removeLayer(sunLayer);
+          sunLayer = null;
+        }
+        if (sunTooltip) {
+          map.removeLayer(sunTooltip);
+          sunTooltip = null;
+        }
+      };
+      line.on('mouseover', updateSun);
+      line.on('mousemove', updateSun);
+      hitLine.on('mouseover', updateSun);
+      hitLine.on('mousemove', updateSun);
+      line.on('mouseout', clearSun);
+      hitLine.on('mouseout', clearSun);
+      return line;
+    }
+
+    const markerGroup = L.featureGroup(places.map(p => marker(p).addTo(map))).addTo(map);
+    const legendPanel = document.getElementById('legendPanel');
+    const legendToggle = document.getElementById('legendToggle');
+    if (legendPanel && legendToggle) {
+      legendToggle.addEventListener('click', () => {
+        const collapsed = legendPanel.classList.toggle('collapsed');
+        legendToggle.textContent = collapsed ? '展开' : '收起';
+      });
+    }
+
+    const tripMarkerGroup = L.featureGroup(tripPlaces.map(p => tripMarker(p).addTo(map))).addTo(map);
+    const officialStopGroup = L.featureGroup(officialStops.map(s => officialStopMarker(s).addTo(map))).addTo(map);
+    const shopGroup = L.featureGroup(electronicsStores.map(s => shopMarker(s).addTo(map))).addTo(map);
+    const lodgingGroup = L.featureGroup(lodgingStops.map(s => lodgingMarker(s).addTo(map))).addTo(map);
+    const supplyGroup = L.featureGroup(supplyStops.map(s => supplyMarker(s).addTo(map))).addTo(map);
+    const transportHubGroup = L.featureGroup(transportHubs.map(h => transportHubMarker(h).addTo(map))).addTo(map);
+    const transportConnectionLayers = transportConnections.map(c => addTransportConnection(c)).filter(Boolean);
+    const transportConnectionGroup = L.featureGroup(transportConnectionLayers).addTo(map);
+
+    routes.forEach(route => {
+      L.polyline(route.points, {
+        color: route.color,
+        weight: 4,
+        opacity: 0.8,
+        dashArray: '8 8'
+      }).bindPopup(`
+        <div class="tag">route</div>
+        <div class="popup-title">${route.name}</div>
+        <p>${route.note}</p>
+      `).addTo(map);
+    });
+
+    async function addOfficialScenicRoute(route) {
+      const routed = await routeOnRoad(route.pts);
+      const routedPts = routed.points;
+      return L.polyline(routedPts, {
+        color: route.active ? '#0b98a5' : grayRoute,
+        weight: route.active ? 9 : 3,
+        opacity: route.active ? 0.34 : 0.42,
+        dashArray: route.active ? null : '5 8'
+      }).bindPopup(`
+        <div class="tag">${route.active ? 'official scenic route / 本次相关' : 'official scenic route / 本次未纳入'}</div>
+        <div class="popup-title">${route.name}</div>
+        <p>${route.active ? '本次路线会尽量贴合这条国家观光公路。' : '这是挪威国家观光公路之一，本次不专门纳入，灰色显示作空间参考。'}</p>
+        <ul class="meta">
+          <li><b>OSRM路线距离：</b>${formatDistance(routed.distance)}</li>
+          <li><b>OSRM行车耗时：</b>${formatDuration(routed.duration)}</li>
+        </ul>
+        <div class="links"><a href="${route.url}" target="_blank">官方路线页面</a></div>
+      `).addTo(map);
+    }
+
+    async function initializeRoutedLayers() {
+      const officialLayers = [];
+      for (const route of officialScenicRoutes) {
+        officialLayers.push(await addOfficialScenicRoute(route));
+      }
+      const driveLayers = [];
+      for (let i = 0; i < detailedDriveSegments.length; i++) {
+        driveLayers.push(await addDetailedDriveSegment(detailedDriveSegments[i], i));
+      }
+      computeDetailedSchedule();
+      updateSelectionPanel();
+      const driveGroup = L.featureGroup(driveLayers).addTo(map);
+      const scenicGroup = L.featureGroup(officialLayers).addTo(map);
+      const group = L.featureGroup([
+        ...markerGroup.getLayers(),
+        ...tripMarkerGroup.getLayers(),
+        ...officialStopGroup.getLayers(),
+        ...shopGroup.getLayers(),
+        ...lodgingGroup.getLayers(),
+        ...supplyGroup.getLayers(),
+        ...transportHubGroup.getLayers(),
+        ...transportConnectionGroup.getLayers(),
+        ...driveGroup.getLayers(),
+        ...scenicGroup.getLayers()
+      ]);
+      map.fitBounds(group.getBounds().pad(0.18));
+      return {driveGroup, scenicGroup};
+    }
+
+    areas.forEach(area => {
+      L.rectangle(area.bounds, {
+        color: area.color,
+        weight: 2,
+        fillColor: area.color,
+        fillOpacity: 0.12,
+        interactive: false
+      }).addTo(map);
+      const center = [
+        (area.bounds[0][0] + area.bounds[1][0]) / 2,
+        (area.bounds[0][1] + area.bounds[1][1]) / 2
+      ];
+      L.circleMarker(center, {
+        radius: 6,
+        color: '#fff',
+        weight: 2,
+        fillColor: area.color,
+        fillOpacity: 0.9
+      }).bindPopup(`
+        <div class="tag">area</div>
+        <div class="popup-title">${area.name}</div>
+        <p>${area.note}</p>
+      `).addTo(map);
+    });
+
+    initializeRoutedLayers();
+  </script>
+</body>
+</html>
